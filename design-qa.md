@@ -37,6 +37,10 @@ The above-the-fold task card and bottom navigation were checked closely because 
 - Credits screen trip logging
 - Credit balance update from 16 to 24
 - Home-state return and tab scroll reset
+- OpenStreetMap tile rendering and Leaflet pan/zoom controls
+- Anchor, charging, and Metro layer filters
+- Charging-station marker selection and map fly-to behavior
+- Selected-point detail card and visible source attribution
 
 ## Console check
 
@@ -47,6 +51,7 @@ No application console errors were observed. The only logged errors were unrelat
 1. Initial capture found a P1 navigation placement issue: the dock inherited an unresolved mobile safe-area variable and rendered near the top of the app.
 2. Fixed the dock to use the protected runtime's `--device-safe-area-bottom` variable. Post-fix evidence shows the dock fixed above the home indicator and visually aligned with the source.
 3. Interaction testing found a P2 scroll-state issue: changing tabs retained the previous screen's scroll offset. Added a tab key to remount `MobileScroll`; post-fix evidence shows each tab opening at its intended top state.
+4. Map verification rendered live OpenStreetMap tiles, 15 mobility points plus the Relay corridor polyline, and successfully selected Marengo Charging Plaza. Layer filtering reduced the visible point count from 15 to 9 when charging was disabled and restored it when re-enabled. No application console error was introduced.
 
 ## Follow-up polish
 

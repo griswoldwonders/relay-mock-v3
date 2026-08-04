@@ -10,8 +10,16 @@ A mobile-first Relay Rider prototype for institution-supported EV commuting and 
 - Log planned shared trips
 - Track proposed EV credits and parking programs
 - Review partner metrics and program gates
+- Explore an interactive OpenStreetMap mobility map with proposed Relay Anchor Points, Pasadena public EV charging locations, and Metro A Line stations
 
 The app remains a planning prototype. It does not process payments, redeem charging value, or activate live rides.
+
+## Map data notes
+
+- Base map: OpenStreetMap contributors
+- Pasadena public charging locations: Pasadena Water & Power public station listings
+- Pasadena rail stations: LA Metro A Line public materials
+- Relay Anchor Points: proposed planning locations; each still requires site, safety, and partner approval
 
 ## Run locally
 
