@@ -391,6 +391,59 @@ const SCORE_WEIGHTS = {
   capacity: 0.05,
 };
 
+const COMMUTE_PROGRAMS = [
+  {
+    id: "ev-relay",
+    name: "EV Relay Credit",
+    sponsor: "Institution-funded demo",
+    eligibility: "Verified EV shared commute using an approved anchor",
+    reward: 8,
+    unit: "credits",
+    status: "Eligible",
+  },
+  {
+    id: "parking-relief",
+    name: "Preferred Carpool Parking",
+    sponsor: "Campus parking demo",
+    eligibility: "Two or more verified participants on a planned route",
+    reward: 1,
+    unit: "parking day",
+    status: "Needs partner approval",
+  },
+  {
+    id: "mode-shift",
+    name: "Solo-Drive Shift Challenge",
+    sponsor: "TDM campaign demo",
+    eligibility: "Replace a recorded solo commute with an eligible mode",
+    reward: 5,
+    unit: "points",
+    status: "Eligible",
+  },
+];
+
+const initialTripLog = [
+  {
+    id: "trip_3001",
+    date: "Aug 3",
+    mode: "EV carpool",
+    corridor: "Pasadena ↔ Glendale ↔ Eagle Rock",
+    occupants: 2,
+    miles: 11.8,
+    status: "Pending verification",
+    credits: 8,
+  },
+  {
+    id: "trip_3002",
+    date: "Aug 1",
+    mode: "Transit + EV relay",
+    corridor: "Union Station / Cal State LA → Pasadena / SGV",
+    occupants: 2,
+    miles: 8.4,
+    status: "Verified demo",
+    credits: 8,
+  },
+];
+
 const initialProfile = {
   name: "Marcus J.",
   vehicle: "Tesla Model 3",
@@ -1127,6 +1180,15 @@ function App() {
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [scanResults, setScanResults] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [tripLog, setTripLog] = useState(initialTripLog);
+  const [commutePlan, setCommutePlan] = useState({
+    organization: "Pasadena City College",
+    workEmail: "Verified demo",
+    schedule: "Mon–Thu · arrive 8:00–9:00 AM",
+    primaryMode: "Solo gasoline vehicle",
+    goal: "Use an EV relay 2 days per week",
+    privacy: "Approximate origin + approved anchors only",
+  });
   const [adminNote, setAdminNote] = useState(
     "V2 is operational planning only: no payments, no live ride activation."
   );
@@ -1173,6 +1235,20 @@ function App() {
 
   const selectedRoute =
     routes.find((r) => r.id === selectedRouteId) || routes[0];
+
+  const verifiedTrips = tripLog.filter((trip) =>
+    trip.status.toLowerCase().includes("verified")
+  );
+  const avoidedSoloTrips = tripLog.reduce(
+    (sum, trip) => sum + Math.max(0, trip.occupants - 1),
+    0
+  );
+  const sharedMiles = tripLog.reduce((sum, trip) => sum + trip.miles, 0);
+  const estimatedCo2Lb = Math.round(sharedMiles * 0.79 * 10) / 10;
+  const availableCredits = verifiedTrips.reduce(
+    (sum, trip) => sum + trip.credits,
+    0
+  );
 
   function updateRoute(patch) {
     const next = { ...routeDraft, ...patch };
@@ -1241,6 +1317,24 @@ function App() {
     }, 850);
   }
 
+  function logPlannedCommute() {
+    const corridor = getCorridor(selectedCorridor);
+    const newTrip = {
+      id: createId("trip"),
+      date: "Today",
+      mode: "EV carpool",
+      corridor: corridor.name,
+      occupants: 2,
+      miles: 10.6,
+      status: "Pending verification",
+      credits: 8,
+    };
+    setTripLog([newTrip, ...tripLog]);
+    setAdminNote(
+      "Planned commute recorded. Credits remain pending until partner verification."
+    );
+  }
+
   const tools = [
     "Operations Map",
     "Sonar",
@@ -1250,6 +1344,8 @@ function App() {
     "Safe Anchor Points",
     "EV Driver Profile",
     "Match Board",
+    "My Commute Plan",
+    "Programs & Trip Log",
     "Engineering Console",
     "Admin Dashboard",
   ];
@@ -1813,6 +1909,146 @@ function App() {
               </Panel>
             )}
 
+            {tool === "My Commute Plan" && (
+              <Panel
+                eyebrow="Personalized commuter journey"
+                title="My EV commute plan"
+              >
+                <div className="notice">
+                  Relay Rider uses verified affiliation, schedule compatibility,
+                  approximate geography, and program eligibility to show only
+                  relevant commute actions. Exact home addresses are not shown
+                  to other participants.
+                </div>
+                <div className="grid3">
+                  <Card title="Affiliation" body={commutePlan.organization} />
+                  <Card title="Identity status" body={commutePlan.workEmail} />
+                  <Card title="Privacy setting" body={commutePlan.privacy} />
+                </div>
+                <h3>Commute preferences</h3>
+                <div className="formGrid">
+                  <Input
+                    label="Organization"
+                    value={commutePlan.organization}
+                    onChange={(v) =>
+                      setCommutePlan({ ...commutePlan, organization: v })
+                    }
+                  />
+                  <Input
+                    label="Typical schedule"
+                    value={commutePlan.schedule}
+                    onChange={(v) =>
+                      setCommutePlan({ ...commutePlan, schedule: v })
+                    }
+                  />
+                  <Select
+                    label="Current primary mode"
+                    value={commutePlan.primaryMode}
+                    onChange={(v) =>
+                      setCommutePlan({ ...commutePlan, primaryMode: v })
+                    }
+                    options={[
+                      "Solo gasoline vehicle",
+                      "Solo EV",
+                      "Carpool",
+                      "Transit",
+                      "Bike / walk",
+                    ]}
+                  />
+                  <Input
+                    label="Weekly goal"
+                    value={commutePlan.goal}
+                    onChange={(v) =>
+                      setCommutePlan({ ...commutePlan, goal: v })
+                    }
+                  />
+                </div>
+                <h3>Recommended next actions</h3>
+                <div className="grid3">
+                  <Card
+                    title="1 · Verify affiliation"
+                    body="Use an approved organization email or administrator-issued code."
+                  />
+                  <Card
+                    title="2 · Preview a compatible relay"
+                    body="Compare schedule, detour, anchor, EV, and confidence signals before sharing contact details."
+                  />
+                  <Card
+                    title="3 · Record the outcome"
+                    body="Log the commute for partner review, incentive eligibility, parking relief, and reporting."
+                  />
+                </div>
+              </Panel>
+            )}
+
+            {tool === "Programs & Trip Log" && (
+              <Panel
+                eyebrow="Engagement + accountable incentives"
+                title="Programs and commute ledger"
+              >
+                <div className="grid4">
+                  <Stat label="Available Credits" value={availableCredits} />
+                  <Stat label="Logged Trips" value={tripLog.length} />
+                  <Stat label="Solo Trips Avoided" value={avoidedSoloTrips} />
+                  <Stat label="Est. CO₂ Avoided" value={estimatedCo2Lb + " lb"} />
+                </div>
+                <div className="notice">
+                  Demo credits are eligibility signals—not cash or charging
+                  value. A sponsoring institution must approve funding,
+                  verification rules, redemption, caps, and participant terms.
+                </div>
+                <h3>Eligible and proposed programs</h3>
+                <div className="grid3">
+                  {COMMUTE_PROGRAMS.map((program) => (
+                    <article className="card" key={program.id}>
+                      <span
+                        className={
+                          program.status === "Eligible" ? "good" : "pill"
+                        }
+                      >
+                        {program.status}
+                      </span>
+                      <h3>{program.name}</h3>
+                      <p>{program.eligibility}</p>
+                      <div className="chips">
+                        <span>{program.sponsor}</span>
+                        <b>
+                          {program.reward} {program.unit}
+                        </b>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <button className="primary" onClick={logPlannedCommute}>
+                  Log a Planned EV Commute
+                </button>
+                <h3>Verification ledger</h3>
+                <div className="reviewTable tripTable">
+                  <b>Date / mode</b>
+                  <b>Corridor / evidence</b>
+                  <b>Status / provisional value</b>
+                  {tripLog.map((trip) => (
+                    <React.Fragment key={trip.id}>
+                      <span>
+                        {trip.date}<br />
+                        <small>{trip.mode}</small>
+                      </span>
+                      <span>
+                        {trip.corridor}<br />
+                        <small>
+                          {trip.occupants} occupants · {trip.miles} miles
+                        </small>
+                      </span>
+                      <span>
+                        {trip.status}<br />
+                        <small>{trip.credits} demo credits</small>
+                      </span>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </Panel>
+            )}
+
             {tool === "Engineering Console" && (
               <Panel
                 eyebrow="MIT-style systems view"
@@ -1984,6 +2220,12 @@ function App() {
                     label="Risk Flags"
                     value={matches.reduce((sum, m) => sum + m.riskFlags.length, 0)}
                   />
+                  <Stat label="Logged Trips" value={tripLog.length} />
+                  <Stat label="Verified Trips" value={verifiedTrips.length} />
+                  <Stat label="Solo Trips Avoided" value={avoidedSoloTrips} />
+                  <Stat label="Shared Miles" value={sharedMiles.toFixed(1)} />
+                  <Stat label="Est. CO₂ Avoided" value={estimatedCo2Lb + " lb"} />
+                  <Stat label="Credit Liability" value={availableCredits} />
                   <Stat label="Mode" value="Planning" />
                 </div>
                 <div className="notice">
@@ -2005,6 +2247,15 @@ function App() {
                   <span>Live ride activation</span>
                   <span>Disabled</span>
                   <span>Requires insurance/legal readiness</span>
+                  <span>Trip verification</span>
+                  <span>Demo rules</span>
+                  <span>Partner must approve evidence and exception workflow</span>
+                  <span>EV credit redemption</span>
+                  <span>Not funded</span>
+                  <span>Requires sponsor, budget cap, vendor, and audit trail</span>
+                  <span>Rule 2202 reporting</span>
+                  <span>Needs review</span>
+                  <span>Export only approved fields and preserve source lineage</span>
                 </div>
               </Panel>
             )}
