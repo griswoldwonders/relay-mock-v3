@@ -1,23 +1,17 @@
-# Relay Rider V2 — MIT Engineering App
+# Relay Rider Mobile Prototype
 
-An operational React prototype for Relay Rider's planned-route commuter coordination system.
+A mobile-first Relay Rider prototype for institution-supported EV commuting and transportation demand management.
 
-## Included
+## Product flows
 
-- Driver route posting
-- Rider bid posting
-- Corridor and Safe Anchor Point selection
-- EV driver profiles
-- Mock matching and sonar logic
-- Leaflet/OpenStreetMap operational map
-- Administrative dashboard
-- Responsive interface
+- Plan an EV-supported commute
+- Review privacy-preserving route matches
+- Inspect explainable match factors
+- Log planned shared trips
+- Track proposed EV credits and parking programs
+- Review partner metrics and program gates
 
-> This repository is a prototype. It does not collect payments or activate live rides.
-
-## Open in StackBlitz
-
-[Launch Relay Rider V2 in StackBlitz](https://stackblitz.com/github/griswoldwonders/relay-rider-v2-mit-engineering-app)
+The app remains a planning prototype. It does not process payments, redeem charging value, or activate live rides.
 
 ## Run locally
 
@@ -26,29 +20,14 @@ npm install
 npm run dev
 ```
 
-## Production build
+## Validate
 
 ```bash
+npm run check:runtime
 npm run build
-npm run preview
+npm run test:sites
 ```
 
-## Technology
+## StackBlitz
 
-- React
-- TypeScript
-- Vite
-- Leaflet and OpenStreetMap, loaded dynamically by the application
-
-## V2.1 commuter-program update
-
-The prototype now includes:
-
-- verified institution-oriented onboarding and privacy controls
-- a personalized EV commute plan
-- proposed EV-credit, parking, and mode-shift programs
-- trip logging with pending/verified evidence states
-- administrator metrics for solo trips avoided, shared miles, estimated emissions, and provisional credit liability
-- explicit partner approval and Rule 2202 reporting review gates
-
-Product patterns were informed by public materials from [sRide](https://sride.co/enterprise/) and [RideAmigos](https://rideamigos.com/), then adapted to Relay Rider's institution-funded EV/TDM model. Names, wording, user interface, calculations, and workflows in this repository are original prototype implementations.
+[Open the public repository in StackBlitz](https://stackblitz.com/github/griswoldwonders/relay-rider-v2-mit-engineering-app)
