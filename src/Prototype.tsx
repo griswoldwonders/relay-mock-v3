@@ -1,98 +1,119 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useMemo, useState } from "react";
 import {
   BarChartIcon,
   CalendarIcon,
   CheckCircledIcon,
   ChevronRightIcon,
   DashboardIcon,
+  ExclamationTriangleIcon,
+  FileTextIcon,
+  GlobeIcon,
   LightningBoltIcon,
   LockClosedIcon,
-  MagnifyingGlassIcon,
   PersonIcon,
-  PlusIcon,
-  RocketIcon,
   SewingPinIcon,
 } from "@radix-ui/react-icons";
 import { MobileScroll } from "./mobile";
 
-type Tab = "home" | "plan" | "map" | "rewards" | "admin";
-type MapLayer = "anchor" | "charging" | "transit";
-type MobilityPoint = {
+type Tab = "home" | "commute" | "options" | "benefits" | "program";
+type CommuteMode = "need" | "route";
+type ReviewState = "Preview available" | "Administrative review" | "Approved for beta";
+type LegalView = "privacy" | "terms" | null;
+
+type CommuterOption = {
   id: string;
-  name: string;
-  type: MapLayer;
-  lat: number;
-  lng: number;
-  detail: string;
-  status: string;
-  source: string;
+  label: string;
+  route: string;
+  window: string;
+  accessPoint: string;
+  compatibility: number;
+  routeFit: number;
+  detour: string;
+  vehicle: string;
+  capacity: string;
+  review: ReviewState;
+  reasons: string[];
 };
 
-const MOBILITY_POINTS: MobilityPoint[] = [
-  { id: "pcc", name: "Pasadena City College", type: "anchor", lat: 34.1447, lng: -118.1181, detail: "Proposed campus-edge Relay Anchor", status: "Partner review", source: "Relay Rider proposal" },
-  { id: "glendale-transit", name: "Glendale Transportation Center", type: "anchor", lat: 34.1234, lng: -118.2586, detail: "Regional rail and bus connection", status: "Site review", source: "Relay Rider proposal" },
-  { id: "eagle-rock", name: "Eagle Rock Plaza", type: "anchor", lat: 34.1365, lng: -118.2078, detail: "Proposed midpoint public-edge anchor", status: "Permission required", source: "Relay Rider proposal" },
-  { id: "memorial-anchor", name: "Memorial Park Relay Anchor", type: "anchor", lat: 34.1478, lng: -118.1471, detail: "Proposed transit-connected meeting point", status: "Public-site review", source: "Relay Rider proposal" },
-  { id: "marengo", name: "Marengo Charging Plaza", type: "charging", lat: 34.1443, lng: -118.1452, detail: "155 E Green St · public DC fast charging", status: "Public charging", source: "Pasadena Water & Power" },
-  { id: "arroyo", name: "Arroyo Charging Depot", type: "charging", lat: 34.1278, lng: -118.1504, detail: "64 E Glenarm St · 26 chargers", status: "Public charging", source: "Pasadena Water & Power" },
-  { id: "delmar-charge", name: "Del Mar Garage Chargers", type: "charging", lat: 34.142, lng: -118.1483, detail: "202 S Raymond Ave · public charging", status: "Public charging", source: "Pasadena Water & Power" },
-  { id: "shoppers", name: "Shopper's Lane Charging", type: "charging", lat: 34.14, lng: -118.1238, detail: "410 Shopper's Lane · fast charging", status: "Public charging", source: "Pasadena Water & Power" },
-  { id: "victory", name: "Victory Park Chargers", type: "charging", lat: 34.1654, lng: -118.096, detail: "2575 Paloma St · public charging", status: "Public charging", source: "Pasadena Water & Power" },
-  { id: "robinson", name: "Robinson Park Charging Depot", type: "charging", lat: 34.1641, lng: -118.1505, detail: "1081 N Fair Oaks Ave · Level 2 + DC fast", status: "Public charging", source: "Pasadena Water & Power" },
-  { id: "fillmore", name: "Fillmore Station", type: "transit", lat: 34.1334, lng: -118.1485, detail: "Metro A Line station", status: "Transit station", source: "LA Metro" },
-  { id: "delmar", name: "Del Mar Station", type: "transit", lat: 34.1427, lng: -118.1481, detail: "Metro A Line station", status: "Transit station", source: "LA Metro" },
-  { id: "memorial", name: "Memorial Park Station", type: "transit", lat: 34.1478, lng: -118.1471, detail: "Metro A Line station", status: "Transit station", source: "LA Metro" },
-  { id: "lake", name: "Lake Station", type: "transit", lat: 34.1517, lng: -118.1315, detail: "Metro A Line station", status: "Transit station", source: "LA Metro" },
-  { id: "allen", name: "Allen Station", type: "transit", lat: 34.1524, lng: -118.1144, detail: "Metro A Line station", status: "Transit station", source: "LA Metro" },
+const OPTIONS: CommuterOption[] = [
+  {
+    id: "option-01",
+    label: "Option 01",
+    route: "Glendale → Pasadena City College",
+    window: "Arrive 8:05–8:25 AM",
+    accessPoint: "Glendale Transportation Center",
+    compatibility: 94,
+    routeFit: 91,
+    detour: "Estimated 4–6 min",
+    vehicle: "Verified EV · demonstration profile",
+    capacity: "1 seat indicated",
+    review: "Administrative review",
+    reasons: [
+      "Recurring Tuesday and Thursday schedule overlaps",
+      "Selected Access Point is compatible with both route profiles",
+      "Estimated detour remains within the participant's stated limit",
+      "Both participants belong to the PCC demonstration cohort",
+    ],
+  },
+  {
+    id: "option-02",
+    label: "Option 02",
+    route: "Eagle Rock → Pasadena City College",
+    window: "Arrive 8:15–8:35 AM",
+    accessPoint: "Eagle Rock Plaza public edge",
+    compatibility: 87,
+    routeFit: 84,
+    detour: "Estimated 7–9 min",
+    vehicle: "Hybrid · demonstration profile",
+    capacity: "2 seats indicated",
+    review: "Preview available",
+    reasons: [
+      "Origin zones are within the same institution-defined corridor",
+      "Return schedule is compatible on one recurring day",
+      "Access Point preference is shared",
+      "Detour is near the participant's maximum and requires review",
+    ],
+  },
 ];
 
-const matches = [
-  { name: "Marcus", vehicle: "Tesla Model 3", time: "8:10 AM", score: 94, tone: "lavender" },
-  { name: "Jordan", vehicle: "Kia Niro EV", time: "8:25 AM", score: 88, tone: "yellow" },
-];
-
-const trips = [
-  { day: "Today", route: "Glendale → PCC", detail: "EV relay · 11.8 mi", status: "Pending", tone: "peach" },
-  { day: "Aug 1", route: "Eagle Rock → PCC", detail: "Verified · 8 credits", status: "Verified", tone: "mint" },
+const BENEFITS = [
+  { title: "Green Route Credit", value: "Up to 8 points", status: "Sponsor approval required" },
+  { title: "Preferred Parking", value: "1 modeled day", status: "Program-rule review" },
+  { title: "Mode-Shift Challenge", value: "1 of 2 commutes", status: "Demonstration progress" },
 ];
 
 export default function Prototype() {
   const [tab, setTab] = useState<Tab>("home");
-  const [searching, setSearching] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState(0);
-  const [selectedPoint, setSelectedPoint] = useState<MobilityPoint>(MOBILITY_POINTS[0]);
-  const [activeLayers, setActiveLayers] = useState<MapLayer[]>(["anchor", "charging", "transit"]);
-  const [credits, setCredits] = useState(16);
-  const [logged, setLogged] = useState(false);
+  const [commuteMode, setCommuteMode] = useState<CommuteMode>("need");
+  const [selectedDays, setSelectedDays] = useState(["Tue", "Thu"]);
+  const [selectedOption, setSelectedOption] = useState(OPTIONS[0]);
+  const [interestSent, setInterestSent] = useState(false);
+  const [legalView, setLegalView] = useState<LegalView>(null);
+  const [consents, setConsents] = useState({ terms: true, privacy: true, program: true, research: false });
 
   const title = useMemo(
-    () => ({ home: "Relay", plan: "My Plan", map: "Mobility Map", rewards: "Credits", admin: "Program" })[tab],
+    () => ({ home: "Relay Rider", commute: "My Commute", options: "Commuter Options", benefits: "Program Benefits", program: "Program" })[tab],
     [tab],
   );
 
-  function findRelay() {
-    setSearching(true);
-    window.setTimeout(() => {
-      setSearching(false);
-      setTab("map");
-    }, 650);
+  function toggleDay(day: string) {
+    setSelectedDays((current) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day]);
   }
 
-  function logCommute() {
-    if (logged) return;
-    setLogged(true);
-    setCredits((value) => value + 8);
+  function expressInterest() {
+    setInterestSent(true);
   }
 
-  function toggleLayer(layer: MapLayer) {
-    setActiveLayers((current) =>
-      current.includes(layer)
-        ? current.length === 1
-          ? current
-          : current.filter((item) => item !== layer)
-        : [...current, layer],
+  if (legalView) {
+    return (
+      <div className="relay-shell">
+        <MobileScroll className="app-screen relay-scroll">
+          <main className="relay-content legal-screen">
+            <button className="text-button back-button" onClick={() => setLegalView(null)}>← Back to program</button>
+            {legalView === "privacy" ? <PrivacyPolicy /> : <TermsOfService />}
+          </main>
+        </MobileScroll>
+      </div>
     );
   }
 
@@ -102,255 +123,304 @@ export default function Prototype() {
         <main className="relay-content">
           <header className="page-heading">
             <div>
-              <span className="kicker">EV COMMUTE NETWORK</span>
+              <span className="kicker">PCC CONTROLLED BETA · DEMONSTRATION</span>
               <h1>{title}</h1>
             </div>
-            <button className="profile-button" aria-label="Open profile">
-              <PersonIcon />
-            </button>
+            <button className="profile-button" aria-label="Open participant profile"><PersonIcon /></button>
           </header>
+
+          <section className="beta-notice">
+            <LockClosedIcon />
+            <div>
+              <strong>Closed, institution-sponsored beta</strong>
+              <p>Approved commuters are not charged. Transportation is not guaranteed, and every option remains subject to participant consent, capacity, program rules, and administrative review.</p>
+            </div>
+          </section>
 
           {tab === "home" && (
             <>
               <section className="hero-card">
-                <div className="hero-row">
-                  <span className="icon-tile"><RocketIcon /></span>
-                  <div>
-                    <strong>Plan a cleaner commute</strong>
-                    <small>Pasadena · Glendale · Eagle Rock</small>
-                  </div>
+                <small>EMPLOYER & CAMPUS MOBILITY PROGRAM</small>
+                <h2>Coordinate the commute you already make.</h2>
+                <p>Submit a commute need, register a planned route, and review explainable commuter-option previews.</p>
+                <div className="hero-actions">
+                  <button className="primary-action" onClick={() => { setCommuteMode("need"); setTab("commute"); }}>Submit commute need</button>
+                  <button className="secondary-action" onClick={() => { setCommuteMode("route"); setTab("commute"); }}>Register planned route</button>
                 </div>
-                <div className="route-inputs">
-                  <button><SewingPinIcon /> Glendale Transit</button>
-                  <button><SewingPinIcon /> Pasadena City College</button>
-                  <button className="schedule"><CalendarIcon /> Today · 8:00–9:00 AM</button>
-                </div>
-                <button className="primary-action" onClick={findRelay}>
-                  <MagnifyingGlassIcon /> {searching ? "Scanning corridor…" : "Find an EV Relay"}
-                </button>
               </section>
 
-              <section className="credit-banner">
+              <section className="status-card">
+                <div className="status-icon"><CheckCircledIcon /></div>
                 <div>
-                  <small>Institution-funded demo</small>
-                  <strong>Earn EV commute credits</strong>
-                  <p>Log a verified shared trip. Partner approval required.</p>
+                  <small>PROGRAM STATUS</small>
+                  <strong>PCC demonstration cohort</strong>
+                  <p>Eligibility acknowledged · privacy controls active</p>
                 </div>
-                <span className="credit-orb"><LightningBoltIcon /></span>
+                <span>Active</span>
               </section>
 
-              <div className="section-title"><h2>Today</h2><button onClick={() => setTab("plan")}>See plan</button></div>
-              <section className="today-card">
-                <span className="mini-route"><SewingPinIcon /></span>
-                <div><strong>Glendale → PCC</strong><p>8:10 AM · 2 seats · 94% match</p></div>
-                <span className="status-dot">Ready</span>
-              </section>
+              <div className="section-title"><h2>Next actions</h2><button onClick={() => setTab("options")}>View all</button></div>
+              <button className="action-row" onClick={() => setTab("options")}>
+                <span className="icon-tile"><SewingPinIcon /></span>
+                <div><strong>Review 2 commuter-option previews</strong><small>Simulated results · no reservation created</small></div>
+                <ChevronRightIcon />
+              </button>
+              <button className="action-row" onClick={() => setTab("benefits")}>
+                <span className="icon-tile yellow-tile"><LightningBoltIcon /></span>
+                <div><strong>Review potential program benefits</strong><small>Institution funding and verification required</small></div>
+                <ChevronRightIcon />
+              </button>
 
               <div className="metric-grid">
-                <article className="metric lavender"><small>Available</small><strong>{credits}</strong><span>EV credits</span></article>
-                <article className="metric yellow"><small>This month</small><strong>4</strong><span>solo trips avoided</span></article>
-                <article className="metric mint"><small>Impact</small><strong>26.4</strong><span>shared miles</span></article>
-                <article className="metric peach"><small>Estimate</small><strong>20.9</strong><span>lb CO₂ avoided</span></article>
+                <article className="metric"><small>Demand</small><strong>19</strong><span>modeled signals</span></article>
+                <article className="metric"><small>Supply</small><strong>12</strong><span>planned routes</span></article>
+                <article className="metric"><small>Preview</small><strong>7</strong><span>compatible options</span></article>
+                <article className="metric"><small>Estimate</small><strong>26.4</strong><span>potential shared miles</span></article>
               </div>
             </>
           )}
 
-          {tab === "plan" && (
+          {tab === "commute" && (
             <>
-              <section className="white-card identity-card">
-                <div className="card-top"><span className="icon-tile mint-tile"><CheckCircledIcon /></span><div><strong>PCC affiliation verified</strong><small>Institution demo profile</small></div></div>
-                <div className="privacy-row"><LockClosedIcon /><span>Approximate origin + approved anchors only</span></div>
+              <div className="segmented-control" role="tablist" aria-label="Commute workflow">
+                <button className={commuteMode === "need" ? "active" : ""} onClick={() => setCommuteMode("need")}>I need an option</button>
+                <button className={commuteMode === "route" ? "active" : ""} onClick={() => setCommuteMode("route")}>I already travel this route</button>
+              </div>
+
+              <section className="notice-at-collection">
+                <LockClosedIcon />
+                <p><strong>Privacy notice:</strong> Relay Rider uses approximate zones and commute windows to generate controlled-beta match previews. Exact home addresses are not shown during intake or preview.</p>
               </section>
-              <h2 className="standalone-title">Weekly goal</h2>
-              <section className="goal-card">
-                <div className="goal-head"><div><strong>2 EV relays</strong><small>per week</small></div><b>1 / 2</b></div>
-                <div className="progress-track"><i /></div>
-                <p>One more verified relay unlocks your weekly goal.</p>
+
+              <section className="form-card">
+                <div className="form-heading">
+                  <span className="icon-tile"><CalendarIcon /></span>
+                  <div>
+                    <small>{commuteMode === "need" ? "COMMUTER NEED INTAKE" : "PLANNED ROUTE REGISTRATION"}</small>
+                    <h2>{commuteMode === "need" ? "Recurring campus commute" : "Existing route availability"}</h2>
+                  </div>
+                </div>
+
+                <Field label="Approximate origin zone" value={commuteMode === "need" ? "Glendale Central" : "Glendale / Brand corridor"} />
+                <Field label="Destination" value="Pasadena City College" />
+                <div className="field-block">
+                  <small>Recurring days</small>
+                  <div className="day-row">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri"].map((day) => (
+                      <button key={day} className={selectedDays.includes(day) ? "selected" : ""} onClick={() => toggleDay(day)}>{day}</button>
+                    ))}
+                  </div>
+                </div>
+                <Field label="Morning window" value="7:45–8:30 AM" />
+                <Field label="Return window" value="4:30–5:30 PM" />
+                <Field label="Schedule flexibility" value="±15 minutes" />
+                {commuteMode === "need" ? (
+                  <>
+                    <Field label="Current commute mode" value="Solo gasoline vehicle" />
+                    <Field label="Parking difficulty" value="Often difficult" />
+                    <Field label="Access Point willingness" value="Yes · up to 8 minutes walking" />
+                    <Field label="EV/hybrid preference" value="Preferred, not required" />
+                    <Field label="Accessibility preference" value="No request recorded" />
+                  </>
+                ) : (
+                  <>
+                    <Field label="Available capacity" value="1 seat" />
+                    <Field label="Maximum detour" value="Up to 8 minutes" />
+                    <Field label="Preferred Access Points" value="Glendale Transportation Center · Memorial Park" />
+                    <Field label="Vehicle status" value="EV verification pending" />
+                    <Field label="Existing-route confirmation" value="I already intend to make this trip" />
+                  </>
+                )}
+                <Field label="Privacy setting" value="Approximate zones until approval" />
+                <button className="primary-action" onClick={() => setTab("options")}>{commuteMode === "need" ? "Generate match previews" : "Register planned route"}</button>
+                <p className="form-footnote">Demonstration only. Submitting this form does not purchase transportation, activate a route, or guarantee a commuter option.</p>
               </section>
-              <h2 className="standalone-title">Recommended actions</h2>
-              <button className="action-row" onClick={() => setTab("map")}><span className="icon-tile lavender-tile"><SewingPinIcon /></span><div><strong>Open corridor mobility map</strong><small>Anchors, charging and Metro stations</small></div><ChevronRightIcon /></button>
-              <button className="action-row" onClick={() => setTab("rewards")}><span className="icon-tile yellow-tile"><LightningBoltIcon /></span><div><strong>Review eligible programs</strong><small>Credits, parking and mode-shift offers</small></div><ChevronRightIcon /></button>
-              <section className="plan-note"><strong>Current mode</strong><span>Solo gasoline vehicle</span><strong>Target</strong><span>EV relay 2 days per week</span></section>
             </>
           )}
 
-          {tab === "map" && (
+          {tab === "options" && (
             <>
-              <section className="map-intro">
-                <div>
-                  <small>PASADENA · GLENDALE · EAGLE ROCK</small>
-                  <strong>Corridor infrastructure</strong>
-                </div>
-                <span>{MOBILITY_POINTS.filter((point) => activeLayers.includes(point.type)).length} points</span>
+              <section className="prototype-disclaimer">
+                <ExclamationTriangleIcon />
+                <p><strong>Simulated commuter options.</strong> A preview is not a reservation or transportation purchase. Options do not guarantee acceptance or route operation and may require administrative review.</p>
               </section>
-              <div className="map-filters" aria-label="Map filters">
-                <button className={activeLayers.includes("anchor") ? "active anchor-filter" : ""} onClick={() => toggleLayer("anchor")}><SewingPinIcon /> Anchors</button>
-                <button className={activeLayers.includes("charging") ? "active charging-filter" : ""} onClick={() => toggleLayer("charging")}><LightningBoltIcon /> Charging</button>
-                <button className={activeLayers.includes("transit") ? "active transit-filter" : ""} onClick={() => toggleLayer("transit")}><RocketIcon /> Metro</button>
-              </div>
-              <MobilityMap activeLayers={activeLayers} selectedPoint={selectedPoint} onSelect={setSelectedPoint} />
-              <section className={`map-detail ${selectedPoint.type}`}>
-                <span className="map-detail-icon">{selectedPoint.type === "charging" ? <LightningBoltIcon /> : selectedPoint.type === "transit" ? <RocketIcon /> : <SewingPinIcon />}</span>
-                <div>
-                  <small>{selectedPoint.status}</small>
-                  <strong>{selectedPoint.name}</strong>
-                  <p>{selectedPoint.detail}</p>
-                  <em>Source: {selectedPoint.source}</em>
-                </div>
-              </section>
-              <div className="section-title"><h2>Compatible relays</h2><span>2 found</span></div>
-              <div className="match-list">
-                {matches.map((match, index) => (
-                  <button key={match.name} className={`match-card ${match.tone} ${selectedMatch === index ? "selected" : ""}`} onClick={() => setSelectedMatch(index)}>
-                    <div className="avatar"><PersonIcon /></div>
-                    <div className="match-copy"><small>{match.time}</small><strong>{match.name}</strong><span>{match.vehicle} · verified EV</span></div>
-                    <b>{match.score}%</b>
+
+              <div className="section-title"><h2>Compatible previews</h2><span>2 modeled</span></div>
+              <div className="option-list">
+                {OPTIONS.map((option) => (
+                  <button key={option.id} className={`option-card ${selectedOption.id === option.id ? "selected" : ""}`} onClick={() => { setSelectedOption(option); setInterestSent(false); }}>
+                    <div className="option-top"><small>{option.label}</small><span>{option.review}</span></div>
+                    <strong>{option.route}</strong>
+                    <p>{option.window}</p>
+                    <div className="option-metrics"><b>{option.compatibility}% compatibility</b><span>{option.detour}</span></div>
                   </button>
                 ))}
               </div>
-              <section className="white-card breakdown-card compact-breakdown">
-                <div className="section-title"><h2>Why this match</h2><span>Explainable</span></div>
-                <div className="score-line"><span>Schedule overlap</span><i><b style={{ width: "96%" }} /></i><strong>96</strong></div>
-                <div className="score-line"><span>Safe anchor fit</span><i><b style={{ width: "94%" }} /></i><strong>94</strong></div>
-                <div className="score-line"><span>Detour fit</span><i><b style={{ width: "89%" }} /></i><strong>89</strong></div>
-                <div className="score-line"><span>EV confidence</span><i><b style={{ width: "97%" }} /></i><strong>97</strong></div>
+
+              <section className="detail-card">
+                <div className="section-title"><h2>Why this option appeared</h2><span>Explainable</span></div>
+                <div className="score-grid">
+                  <Score label="Compatibility" value={selectedOption.compatibility} />
+                  <Score label="Route fit" value={selectedOption.routeFit} />
+                </div>
+                <Field label="Estimated detour impact" value={selectedOption.detour} />
+                <Field label="Access Point" value={selectedOption.accessPoint} />
+                <Field label="Vehicle indicator" value={selectedOption.vehicle} />
+                <Field label="Capacity signal" value={selectedOption.capacity} />
+                <Field label="Administrative status" value={selectedOption.review} />
+                <ul className="reason-list">{selectedOption.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                <button className={`primary-action ${interestSent ? "success-action" : ""}`} onClick={expressInterest}>
+                  {interestSent ? "Interest recorded · review pending" : "Express route interest"}
+                </button>
+                <p className="form-footnote">No fare is charged during the controlled beta. Both participants may decline, and an administrator may request changes before coordination.</p>
               </section>
-              <button className="primary-action sticky-action" onClick={() => setTab("plan")}><CheckCircledIcon /> Save route + anchor preview</button>
             </>
           )}
 
-          {tab === "rewards" && (
+          {tab === "benefits" && (
             <>
-              <section className="balance-card"><small>Available demo credits</small><strong>{credits}</strong><p>Not cash or charging value until a sponsor approves funding and redemption.</p></section>
-              <div className="program-grid">
-                <article className="program lavender"><LightningBoltIcon /><strong>EV Relay Credit</strong><span>8 credits</span><small>Eligible</small></article>
-                <article className="program yellow"><SewingPinIcon /><strong>Preferred Parking</strong><span>1 parking day</span><small>Partner review</small></article>
-                <article className="program mint"><RocketIcon /><strong>Mode Shift</strong><span>5 points</span><small>Eligible</small></article>
-                <article className="program peach"><BarChartIcon /><strong>Rule 2202</strong><span>Reporting signal</span><small>Needs review</small></article>
+              <section className="benefit-summary">
+                <LightningBoltIcon />
+                <div><small>INSTITUTION-SPONSORED SCENARIO</small><strong>Potential participant benefits</strong><p>Benefits are promotional, capped, and subject to verification, budget availability, and program approval.</p></div>
+              </section>
+              <div className="benefit-list">
+                {BENEFITS.map((benefit) => (
+                  <article className="benefit-card" key={benefit.title}>
+                    <div><small>{benefit.status}</small><strong>{benefit.title}</strong></div><span>{benefit.value}</span>
+                  </article>
+                ))}
               </div>
-              <div className="section-title"><h2>Trip ledger</h2><span>Auditable</span></div>
-              {trips.map((trip) => <article className={`trip-card ${trip.tone}`} key={trip.day}><span className="mini-route"><RocketIcon /></span><div><small>{trip.day}</small><strong>{trip.route}</strong><p>{trip.detail}</p></div><b>{trip.status}</b></article>)}
-              <button className={`primary-action ${logged ? "success-action" : ""}`} onClick={logCommute}><PlusIcon /> {logged ? "Commute logged · pending review" : "Log planned EV commute"}</button>
+              <section className="legal-note">
+                <LockClosedIcon />
+                <p>Program benefits are not cash, wages, fares, guaranteed earnings, certified carbon credits, or guaranteed reimbursements. A sponsor must fund and approve any live benefit.</p>
+              </section>
+              <h2 className="standalone-title">Participation history</h2>
+              <article className="history-card"><span>Tue</span><div><strong>Glendale → PCC</strong><small>Participant confirmation pending</small></div><b>Review</b></article>
+              <article className="history-card"><span>Thu</span><div><strong>Eagle Rock → PCC</strong><small>Demonstration record</small></div><b>Modeled</b></article>
             </>
           )}
 
-          {tab === "admin" && (
+          {tab === "program" && (
             <>
-              <section className="admin-overview"><small>PCC DEMONSTRATION</small><strong>Program pulse</strong><p>Planning data · partner validation required</p></section>
-              <div className="metric-grid admin-metrics">
-                <article className="metric lavender"><small>Supply</small><strong>12</strong><span>posted routes</span></article>
-                <article className="metric yellow"><small>Demand</small><strong>19</strong><span>open signals</span></article>
-                <article className="metric mint"><small>Outcome</small><strong>7</strong><span>verified trips</span></article>
-                <article className="metric peach"><small>Budget</small><strong>56</strong><span>credit liability</span></article>
-              </div>
-              <h2 className="standalone-title">Review queue</h2>
-              {["Trip evidence rules", "Safe Anchor permissions", "EV credit sponsor", "Rule 2202 field export"].map((item, index) => <button className="review-row" key={item}><span>{index + 1}</span><div><strong>{item}</strong><small>{index < 2 ? "Action needed" : "Needs review"}</small></div><ChevronRightIcon /></button>)}
-              <section className="white-card compliance-card"><div className="card-top"><span className="icon-tile peach-tile"><LockClosedIcon /></span><div><strong>Planning mode</strong><small>No payment or live ride activation</small></div></div></section>
+              <section className="program-card">
+                <small>PASADENA CITY COLLEGE</small>
+                <h2>Controlled commuter beta</h2>
+                <p>Closed participant network · planned routes · approximate zones · Access Points · administrative oversight</p>
+              </section>
+
+              <h2 className="standalone-title">Consent and privacy controls</h2>
+              <ConsentRow label="Terms of Service" detail="Required for beta participation" checked={consents.terms} onToggle={() => setConsents({ ...consents, terms: !consents.terms })} />
+              <ConsentRow label="Privacy Policy acknowledgment" detail="Required for beta participation" checked={consents.privacy} onToggle={() => setConsents({ ...consents, privacy: !consents.privacy })} />
+              <ConsentRow label="PCC program rules" detail="Required for cohort participation" checked={consents.program} onToggle={() => setConsents({ ...consents, program: !consents.program })} />
+              <ConsentRow label="Optional research participation" detail="May be withdrawn at any time" checked={consents.research} onToggle={() => setConsents({ ...consents, research: !consents.research })} />
+
+              <h2 className="standalone-title">Legal and program information</h2>
+              <button className="action-row" onClick={() => setLegalView("privacy")}><span className="icon-tile"><LockClosedIcon /></span><div><strong>Privacy Policy</strong><small>Location, schedule, institution, rights, and retention</small></div><ChevronRightIcon /></button>
+              <button className="action-row" onClick={() => setLegalView("terms")}><span className="icon-tile yellow-tile"><FileTextIcon /></span><div><strong>Terms of Service</strong><small>Controlled-beta rules and participant responsibilities</small></div><ChevronRightIcon /></button>
+              <button className="action-row"><span className="icon-tile"><GlobeIcon /></span><div><strong>Access or delete my information</strong><small>Prototype request workflow · administrator follow-up</small></div><ChevronRightIcon /></button>
+              <button className="action-row"><span className="icon-tile peach-tile"><ExclamationTriangleIcon /></span><div><strong>Report an issue</strong><small>Safety, privacy, accessibility, or participant conduct</small></div><ChevronRightIcon /></button>
+
+              <section className="admin-preview">
+                <div className="section-title"><h2>Administrator preview</h2><span>Role restricted</span></div>
+                <div className="metric-grid">
+                  <article className="metric"><small>Needs</small><strong>19</strong><span>open signals</span></article>
+                  <article className="metric"><small>Routes</small><strong>12</strong><span>registered</span></article>
+                  <article className="metric"><small>Review</small><strong>5</strong><span>pending</span></article>
+                  <article className="metric"><small>Access</small><strong>4</strong><span>points to review</span></article>
+                </div>
+                <p>Future role-based administration will include cohort rules, Access Point review, incentive caps, decision reasons, privacy boundaries, and exportable modeled reporting.</p>
+              </section>
             </>
           )}
         </main>
       </MobileScroll>
 
       <nav className="bottom-nav" aria-label="Primary navigation">
-        <button className={tab === "home" ? "active" : ""} onClick={() => setTab("home")} aria-label="Home"><DashboardIcon /></button>
-        <button className={tab === "plan" ? "active" : ""} onClick={() => setTab("plan")} aria-label="Plan"><CalendarIcon /></button>
-        <button className={tab === "map" ? "active center" : "center"} onClick={() => setTab("map")} aria-label="Map"><SewingPinIcon /></button>
-        <button className={tab === "rewards" ? "active" : ""} onClick={() => setTab("rewards")} aria-label="Credits"><LightningBoltIcon /></button>
-        <button className={tab === "admin" ? "active" : ""} onClick={() => setTab("admin")} aria-label="Program"><BarChartIcon /></button>
+        <button className={tab === "home" ? "active" : ""} onClick={() => setTab("home")} aria-label="Home"><DashboardIcon /><span>Home</span></button>
+        <button className={tab === "commute" ? "active" : ""} onClick={() => setTab("commute")} aria-label="Commute"><CalendarIcon /><span>Commute</span></button>
+        <button className={tab === "options" ? "active" : ""} onClick={() => setTab("options")} aria-label="Options"><SewingPinIcon /><span>Options</span></button>
+        <button className={tab === "benefits" ? "active" : ""} onClick={() => setTab("benefits")} aria-label="Benefits"><LightningBoltIcon /><span>Benefits</span></button>
+        <button className={tab === "program" ? "active" : ""} onClick={() => setTab("program")} aria-label="Program"><BarChartIcon /><span>Program</span></button>
       </nav>
     </div>
   );
 }
 
-function MobilityMap({
-  activeLayers,
-  selectedPoint,
-  onSelect,
-}: {
-  activeLayers: MapLayer[];
-  selectedPoint: MobilityPoint;
-  onSelect: (point: MobilityPoint) => void;
-}) {
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.LayerGroup | null>(null);
+function Field({ label, value }: { label: string; value: string }) {
+  return <div className="field-row"><small>{label}</small><strong>{value}</strong><ChevronRightIcon /></div>;
+}
 
-  useEffect(() => {
-    if (!elementRef.current || mapRef.current) return;
+function Score({ label, value }: { label: string; value: number }) {
+  return <div className="score-card"><small>{label}</small><strong>{value}</strong><div><i style={{ width: `${value}%` }} /></div></div>;
+}
 
-    const map = L.map(elementRef.current, {
-      zoomControl: true,
-      attributionControl: true,
-      minZoom: 10,
-      maxZoom: 19,
-    }).setView([34.143, -118.168], 12);
+function ConsentRow({ label, detail, checked, onToggle }: { label: string; detail: string; checked: boolean; onToggle: () => void }) {
+  return <button className="consent-row" onClick={onToggle}><span className={checked ? "check active" : "check"}>{checked ? "✓" : ""}</span><div><strong>{label}</strong><small>{detail}</small></div></button>;
+}
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-      maxZoom: 19,
-    }).addTo(map);
-
-    mapRef.current = map;
-    layerRef.current = L.layerGroup().addTo(map);
-    window.setTimeout(() => map.invalidateSize(), 80);
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-      layerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const group = layerRef.current;
-    if (!map || !group) return;
-
-    group.clearLayers();
-    const visible = MOBILITY_POINTS.filter((point) => activeLayers.includes(point.type));
-    const colors: Record<MapLayer, string> = {
-      anchor: "#7657d6",
-      charging: "#2d8b4e",
-      transit: "#e28b20",
-    };
-
-    visible.forEach((point) => {
-      const selected = selectedPoint.id === point.id;
-      const marker = L.circleMarker([point.lat, point.lng], {
-        radius: selected ? 11 : 8,
-        color: "#ffffff",
-        weight: selected ? 4 : 3,
-        fillColor: colors[point.type],
-        fillOpacity: 1,
-        className: `map-point ${point.type}-point point-${point.id}`,
-      });
-      marker.bindTooltip(point.name, { direction: "top", offset: [0, -8] });
-      marker.on("click", () => {
-        onSelect(point);
-        map.flyTo([point.lat, point.lng], Math.max(map.getZoom(), 14), { duration: 0.45 });
-      });
-      marker.addTo(group);
-    });
-
-    const corridor = MOBILITY_POINTS.filter((point) =>
-      ["glendale-transit", "eagle-rock", "memorial-anchor", "pcc"].includes(point.id),
-    );
-    L.polyline(corridor.map((point) => [point.lat, point.lng] as L.LatLngTuple), {
-      color: "#7657d6",
-      weight: 4,
-      opacity: 0.72,
-      dashArray: "7 8",
-    }).addTo(group);
-  }, [activeLayers, onSelect, selectedPoint]);
-
+function PrivacyPolicy() {
   return (
-    <div className="map-frame" data-scroll-drag="ignore">
-      <div ref={elementRef} className="mobility-map" aria-label="Interactive map of Relay Anchor Points, EV charging stations, and Metro stations" />
-      <div className="map-legend" aria-hidden="true">
-        <span><i className="anchor-dot" /> Anchor</span>
-        <span><i className="charging-dot" /> Charging</span>
-        <span><i className="transit-dot" /> Metro</span>
-      </div>
-    </div>
+    <article className="legal-copy">
+      <span className="kicker">PLANNING DRAFT · COUNSEL REVIEW REQUIRED</span>
+      <h1>Relay Rider Privacy Policy</h1>
+      <p className="effective">Effective date: August 5, 2026</p>
+      <p>Relay Rider is an institution-sponsored commuter coordination and Transportation Demand Management platform developed by Common Pathways Technologies. This policy describes the information used in the product prototype and a future controlled beta. It does not represent a live public transportation service.</p>
+      <h2>Information we may collect</h2>
+      <p>We may collect contact information, institution and cohort affiliation, approximate origin and destination zones, recurring commute days and time windows, schedule flexibility, current commute mode, parking difficulty, Access Point preferences, planned-route information, vehicle and EV/hybrid status, accessibility requests, privacy preferences, program participation records, benefit eligibility records, communications, support reports, and device or usage information.</p>
+      <h2>How information is used</h2>
+      <p>Information may be used to determine program eligibility, generate commuter-option previews, evaluate route and schedule compatibility, suggest Access Points, support administrative review, administer institution-sponsored benefits, provide support, investigate incidents, produce aggregated TDM reports, and improve the prototype or controlled beta.</p>
+      <h2>Location privacy</h2>
+      <p>Relay Rider uses approximate zones before precise locations. Exact home addresses should not be displayed during intake or match preview. More precise information should be disclosed only when needed for an approved coordination workflow and with appropriate consent.</p>
+      <h2>Institutional sponsors and service providers</h2>
+      <p>Information may be shared with the sponsoring institution, verification providers, hosting and communication providers, support vendors, legal or insurance advisors, and authorities when legally required. The exact data-controller relationship with each institution requires program-specific legal review.</p>
+      <h2>No sale of commute-location information</h2>
+      <p>Relay Rider does not intend to sell participant personal information or use commute-location information for cross-context behavioral advertising. This statement must remain consistent with the product's actual analytics and vendor configuration.</p>
+      <h2>Retention</h2>
+      <p>Relay Rider intends to retain information only as long as needed for the relevant program, legal obligations, accounting, safety, and dispute resolution. Final retention periods require counsel, insurance, and institutional review.</p>
+      <h2>Your choices</h2>
+      <p>Participants may request access, correction, deletion, portability where applicable, withdrawal from a program, communication-preference changes, research-consent withdrawal, or changes to location precision. Some records may need to be retained for legal, accounting, safety, or program-administration reasons.</p>
+      <h2>Security</h2>
+      <p>Relay Rider intends to use reasonable safeguards such as encryption in transit, role-based access, least-privilege permissions, logging, vendor review, and incident-response procedures. No system can guarantee absolute security.</p>
+      <h2>Adults only</h2>
+      <p>The current prototype and controlled-beta concept are intended for adult participants. A separate attorney-reviewed policy would be required before any program involving unaccompanied minors.</p>
+      <h2>Contact</h2>
+      <p>Privacy questions may be sent to relayridersupport@gmail.com. Mailing address and formal privacy-request process: [NEEDS FOUNDER INPUT].</p>
+    </article>
+  );
+}
+
+function TermsOfService() {
+  return (
+    <article className="legal-copy">
+      <span className="kicker">PLANNING DRAFT · COUNSEL REVIEW REQUIRED</span>
+      <h1>Relay Rider Terms of Service</h1>
+      <p className="effective">Effective date: August 5, 2026</p>
+      <h2>Product description</h2>
+      <p>Relay Rider provides commuter intake, planned-route registration, compatibility previews, Access Point information, institution-sponsored program administration, and modeled TDM reporting. Relay Rider is not an on-demand ride-hailing, taxi, shuttle, instant-pickup, or guaranteed transportation service.</p>
+      <h2>Eligibility</h2>
+      <p>Current controlled-beta participation is limited to eligible adults in an approved institution or cohort. Participants must provide accurate information, comply with program-specific rules, and maintain only one account unless the program administrator authorizes otherwise.</p>
+      <h2>No commuter charge during beta</h2>
+      <p>Approved commuter participants are not charged by Relay Rider to participate in the current controlled beta. This policy does not guarantee that a commuter option will be available or operate. Relay Rider will provide notice and obtain any required agreement before introducing a future fee, contribution, or purchase workflow.</p>
+      <h2>Commuter-option limitations</h2>
+      <p>A commuter option is a compatibility preview, not a reservation or purchase. Scores, detours, arrival windows, capacity, Access Point suitability, and modeled outcomes are estimates. Participation requires mutual consent and may require administrative review. Either participant may decline before confirmation.</p>
+      <h2>Planned routes</h2>
+      <p>A participant registering a route confirms that the trip is already planned. Relay Rider does not dispatch participants to create trips on demand. Route participants may accept or decline compatible interest and must comply with program rules, verification requirements, and Access Point procedures.</p>
+      <h2>Institution-sponsored benefits</h2>
+      <p>A sponsoring institution may offer capped promotional benefits under separate program rules. Eligibility may depend on verification, participation, budget availability, program limits, and administrative approval. Benefits are not wages, fares, guaranteed earnings, certified carbon credits, or guaranteed reimbursements.</p>
+      <h2>Access Points</h2>
+      <p>Access Points may be proposed, reviewed, designated, or institutionally approved. Relay Rider does not guarantee the safety, availability, accessibility, lighting, or suitability of any location. Participants must follow site rules and may not enter restricted property without authorization.</p>
+      <h2>Participant conduct</h2>
+      <p>Participants may not harass, discriminate, threaten, operate while impaired, provide false information, arrange unauthorized payments, reveal another participant's personal information, circumvent program controls, or use Relay Rider for unauthorized commercial activity.</p>
+      <h2>Accessibility and nondiscrimination</h2>
+      <p>Relay Rider intends to provide an accessibility-request pathway and maintain a nondiscrimination policy. The prototype does not promise that every vehicle or route is accessible. Program administrators must review unresolved accommodation requests before coordination.</p>
+      <h2>Incidents and emergencies</h2>
+      <p>Call emergency services first in an emergency. Relay Rider is not an emergency-response service. Participants should report safety, privacy, accessibility, conduct, or property incidents through the applicable program channel.</p>
+      <h2>Suspension and termination</h2>
+      <p>Relay Rider or a sponsoring institution may suspend a participant, pause a route, remove a preview, preserve records, or revoke eligibility when needed to enforce program rules, investigate an incident, protect participants, or comply with law.</p>
+      <h2>Legal provisions requiring counsel</h2>
+      <p>Warranty disclaimer, limitation of liability, indemnification, dispute resolution, governing law, arbitration, and class-action waiver provisions remain [NEEDS COUNSEL INPUT] and should not be treated as final.</p>
+      <h2>Contact</h2>
+      <p>Questions may be sent to relayridersupport@gmail.com.</p>
+    </article>
   );
 }
