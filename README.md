@@ -1,25 +1,51 @@
-# Relay Rider Mobile Prototype
+# Relay Rider Institution-Sponsored Beta Prototype
 
-A mobile-first Relay Rider prototype for institution-supported EV commuting and transportation demand management.
+A mobile-first Relay Rider prototype for institution-funded commuter coordination and Transportation Demand Management.
+
+## Current product model
+
+Relay Rider helps employers, campuses, hospitals, municipalities, and other institutions coordinate commuters around:
+
+- Recurring commute needs
+- Planned routes participants already intend to travel
+- Approximate origin and destination zones
+- Compatible schedules
+- Designated Access Points
+- Explainable commuter-option previews
+- Administrative review
+- EV/hybrid participation
+- Capped institution-sponsored incentives
+- Modeled TDM reporting
+
+Relay Rider is not an on-demand ride-hailing, taxi, shuttle, live-dispatch, instant-pickup, or guaranteed transportation service.
+
+## Controlled-beta rules
+
+- Approved beta commuters are not charged to participate.
+- A commuter option is a compatibility preview, not a reservation or transportation purchase.
+- Participation depends on route compatibility, capacity, mutual consent, program rules, and administrative review.
+- Transportation, route acceptance, incentives, savings, safety, and modeled outcomes are not guaranteed.
+- Institution-sponsored benefits are promotional, capped, and subject to verification, funding, and program approval.
 
 ## Product flows
 
-- Plan an EV-supported commute
-- Review privacy-preserving route matches
-- Inspect explainable match factors
-- Log planned shared trips
-- Track proposed EV credits and parking programs
-- Review partner metrics and program gates
-- Explore an interactive OpenStreetMap mobility map with proposed Relay Anchor Points, Pasadena public EV charging locations, and Metro A Line stations
+- Join an institution-sponsored program
+- Submit recurring commute needs
+- Register an existing planned route
+- Review explainable commuter-option previews
+- Express route interest
+- Review administrative status
+- Review potential institution-sponsored benefits
+- Manage consent and privacy controls
+- Read the Privacy Policy and Terms of Service inside the prototype
 
-The app remains a planning prototype. It does not process payments, redeem charging value, or activate live rides.
+## Legal and privacy drafts
 
-## Map data notes
+- `docs/PRIVACY_POLICY.md`
+- `docs/TERMS_OF_SERVICE.md`
+- `docs/NOTICE_AT_COLLECTION.md`
 
-- Base map: OpenStreetMap contributors
-- Pasadena public charging locations: Pasadena Water & Power public station listings
-- Pasadena rail stations: LA Metro A Line public materials
-- Relay Anchor Points: proposed planning locations; each still requires site, safety, and partner approval
+These documents are planning drafts and require transportation, privacy, insurance, accessibility, and contract counsel review before operational activation.
 
 ## Run locally
 
