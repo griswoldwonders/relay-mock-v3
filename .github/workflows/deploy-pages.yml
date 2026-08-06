@@ -17,36 +17,44 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
       - name: Verify protected mobile runtime
         run: npm run check:runtime
 
-      - name: Type-check
-        run: npx tsc
+      - name: Build and validate Sites package
+        run: |
+          npm run build
+          npm run test:sites
 
       - name: Build static GitHub Pages bundle
-        run: npx vite build --base=/relay-rider-v2-mit-engineering-app/ --outDir=dist/pages
+        run: ./node_modules/.bin/vite build --base=/relay-rider-v2-mit-engineering-app/ --outDir=dist/pages
 
       - name: Add SPA fallback
         run: cp dist/pages/index.html dist/pages/404.html
 
       - name: Configure Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
           path: dist/pages
 
@@ -55,8 +63,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

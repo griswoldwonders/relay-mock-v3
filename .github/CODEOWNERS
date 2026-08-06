@@ -1,0 +1,13 @@
+* @griswoldwonders
+
+/.github/ @griswoldwonders
+/src/ @griswoldwonders
+/worker/ @griswoldwonders
+/scripts/ @griswoldwonders
+/tests/ @griswoldwonders
+/docs/ @griswoldwonders
+/package.json @griswoldwonders
+/package-lock.json @griswoldwonders
+/vite.config.ts @griswoldwonders
+/index.html @griswoldwonders
+/mobile-runtime.lock.json @griswoldwonders
