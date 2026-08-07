@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import L, { type Map as LeafletMap } from "leaflet";
-import { Cross2Icon, GlobeIcon, LayersIcon, SewingPinIcon } from "@radix-ui/react-icons";
+import { Cross2Icon, LayersIcon, SewingPinIcon } from "@radix-ui/react-icons";
 import { useKeyboard } from "./mobile";
 import PrototypePhase1 from "./PrototypePhase1";
 import "leaflet/dist/leaflet.css";
@@ -129,6 +129,7 @@ export default function Prototype() {
   const [mapOpen, setMapOpen] = useState(false);
   const [filter, setFilter] = useState<MapFilter>("all");
   const [selectedPoint, setSelectedPoint] = useState<CorridorPoint | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const mapNodeRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
 
@@ -136,6 +137,19 @@ export default function Prototype() {
     () => filter === "all" ? CORRIDOR_POINTS : CORRIDOR_POINTS.filter((point) => point.tags.includes(filter)),
     [filter],
   );
+
+  useEffect(() => {
+    const mapTab = rootRef.current?.querySelector<HTMLButtonElement>(".bottom-nav button:nth-child(4)");
+    if (!mapTab) return;
+
+    const previousLabel = mapTab.getAttribute("aria-label");
+    mapTab.setAttribute("aria-label", "Map");
+
+    return () => {
+      if (previousLabel) mapTab.setAttribute("aria-label", previousLabel);
+      else mapTab.removeAttribute("aria-label");
+    };
+  }, []);
 
   useEffect(() => {
     if (!mapOpen || !mapNodeRef.current) return;
@@ -222,24 +236,60 @@ export default function Prototype() {
     setSelectedPoint(null);
   }
 
+  function handleRootClickCapture(event: ReactMouseEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    const mapTab = target.closest(".bottom-nav button:nth-child(4)");
+    if (!mapTab) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    openMap();
+  }
+
   return (
-    <div className="relay-prototype-root">
+    <div ref={rootRef} className="relay-prototype-root" onClickCapture={handleRootClickCapture} data-map-open={mapOpen ? "true" : "false"}>
+      <style>{`
+        .relay-prototype-root .bottom-nav button:nth-child(3) { order: 4; }
+        .relay-prototype-root .bottom-nav button:nth-child(4) { order: 3; }
+        .relay-prototype-root .bottom-nav button:nth-child(4) svg { display: none; }
+        .relay-prototype-root .bottom-nav button:nth-child(4)::before {
+          content: "⌖";
+          font-size: 18px;
+          line-height: 18px;
+          font-weight: 700;
+        }
+        .relay-prototype-root .bottom-nav button:nth-child(4) span {
+          position: relative;
+          color: transparent;
+        }
+        .relay-prototype-root .bottom-nav button:nth-child(4) span::after {
+          position: absolute;
+          inset: 0;
+          color: #8a909b;
+          content: "Map";
+          font-size: 8px;
+          font-weight: 700;
+        }
+        .relay-prototype-root .bottom-nav button:nth-child(4).active {
+          background: transparent;
+          color: #8a909b;
+        }
+        .relay-prototype-root .bottom-nav button:nth-child(4).active span::after {
+          color: #8a909b;
+        }
+      `}</style>
+
       <PrototypePhase1 />
 
-      <button className="relay-map-launcher" onClick={openMap} aria-label="Open real corridor map">
-        <GlobeIcon />
-        <span>Corridor map</span>
-      </button>
-
       {mapOpen && (
-        <section className="relay-map-overlay" aria-label="Interactive Relay Rider corridor map" aria-modal="true" role="dialog">
+        <section className="relay-map-overlay" aria-label="Interactive Relay Rider corridor map" role="region">
           <header className="relay-map-header">
             <div>
-              <span className="relay-map-kicker">LIVE MAP VIEW · OPENSTREETMAP</span>
+              <span className="relay-map-kicker">PRIMARY MAP · OPENSTREETMAP</span>
               <h2>Pasadena–Eagle Rock–Glendale</h2>
-              <p>Explore research anchors and candidate Access Points on a real, pannable map.</p>
+              <p>Explore corridor demand context, research anchors, transit connections, and candidate Access Points.</p>
             </div>
-            <button className="relay-map-close" onClick={closeMap} aria-label="Close corridor map"><Cross2Icon /></button>
+            <button className="relay-map-close" onClick={closeMap} aria-label="Return from corridor map"><Cross2Icon /></button>
           </header>
 
           <div className="relay-map-filters" aria-label="Map layer filters">
