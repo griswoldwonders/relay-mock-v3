@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import L, { type Map as LeafletMap } from "leaflet";
+import L, { type Map as LeafletMap, type TileLayer } from "leaflet";
 import { Cross2Icon, LayersIcon, SewingPinIcon } from "@radix-ui/react-icons";
 import { useKeyboard } from "./mobile";
 import PrototypePhase1 from "./PrototypePhase1";
@@ -8,6 +8,7 @@ import "./prototype.css";
 
 type MapFilter = "all" | "access" | "transit" | "institution";
 type MapTag = Exclude<MapFilter, "all">;
+type TileStatus = "loading" | "ready" | "fallback" | "error";
 
 type CorridorPoint = {
   id: string;
@@ -129,6 +130,7 @@ export default function Prototype() {
   const [mapOpen, setMapOpen] = useState(false);
   const [filter, setFilter] = useState<MapFilter>("all");
   const [selectedPoint, setSelectedPoint] = useState<CorridorPoint | null>(null);
+  const [tileStatus, setTileStatus] = useState<TileStatus>("loading");
   const rootRef = useRef<HTMLDivElement | null>(null);
   const mapNodeRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
@@ -155,18 +157,67 @@ export default function Prototype() {
     if (!mapOpen || !mapNodeRef.current) return;
 
     leafletMapRef.current?.remove();
+    setTileStatus("loading");
 
     const map = L.map(mapNodeRef.current, {
       zoomControl: false,
       attributionControl: true,
       minZoom: 10,
       maxZoom: 19,
+      preferCanvas: true,
     });
 
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(map);
+    let activeTileLayer: TileLayer | null = null;
+    let fallbackStarted = false;
+    let tileLoadCompleted = false;
+
+    const activateFallback = () => {
+      if (fallbackStarted || tileLoadCompleted) return;
+      fallbackStarted = true;
+      setTileStatus("fallback");
+
+      if (activeTileLayer && map.hasLayer(activeTileLayer)) {
+        map.removeLayer(activeTileLayer);
+      }
+
+      const fallbackLayer = L.tileLayer("https://tile.openstreetmap.de/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors",
+        crossOrigin: true,
+      });
+
+      fallbackLayer.once("load", () => {
+        tileLoadCompleted = true;
+        setTileStatus("ready");
+      });
+
+      fallbackLayer.on("tileerror", () => {
+        setTileStatus("error");
+      });
+
+      activeTileLayer = fallbackLayer;
+      fallbackLayer.addTo(map);
+    };
+
+    const primaryLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      crossOrigin: true,
+    });
+
+    primaryLayer.once("load", () => {
+      tileLoadCompleted = true;
+      setTileStatus("ready");
+    });
+
+    primaryLayer.on("tileerror", activateFallback);
+    activeTileLayer = primaryLayer;
+    primaryLayer.addTo(map);
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (!tileLoadCompleted) activateFallback();
+    }, 4500);
 
     L.control.zoom({ position: "topright" }).addTo(map);
 
@@ -209,11 +260,12 @@ export default function Prototype() {
     map.fitBounds(bounds, { padding: [26, 26], maxZoom: 13 });
     map.on("click", () => setSelectedPoint(null));
 
-    const resizeTimer = window.setTimeout(() => map.invalidateSize(), 80);
+    const resizeTimer = window.setTimeout(() => map.invalidateSize(), 120);
     leafletMapRef.current = map;
 
     return () => {
       window.clearTimeout(resizeTimer);
+      window.clearTimeout(fallbackTimer);
       map.remove();
       if (leafletMapRef.current === map) leafletMapRef.current = null;
     };
@@ -228,6 +280,7 @@ export default function Prototype() {
   function openMap() {
     keyboard.hide();
     setSelectedPoint(CORRIDOR_POINTS[0]);
+    setTileStatus("loading");
     setMapOpen(true);
   }
 
@@ -277,6 +330,29 @@ export default function Prototype() {
         .relay-prototype-root .bottom-nav button:nth-child(4).active span::after {
           color: #8a909b;
         }
+        .relay-map-tile-status {
+          position: absolute;
+          z-index: 520;
+          top: 12px;
+          left: 12px;
+          max-width: calc(100% - 86px);
+          padding: 8px 10px;
+          border: 1px solid rgba(216, 220, 227, 0.95);
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.94);
+          color: #4c5360;
+          box-shadow: 0 8px 24px rgba(31, 36, 48, 0.1);
+          font-size: 10px;
+          font-weight: 700;
+          line-height: 1.3;
+          backdrop-filter: blur(12px);
+          pointer-events: none;
+        }
+        .relay-map-tile-status.error {
+          color: #8a3d33;
+          background: rgba(255, 246, 244, 0.96);
+          border-color: #efd2cd;
+        }
       `}</style>
 
       <PrototypePhase1 />
@@ -285,7 +361,7 @@ export default function Prototype() {
         <section className="relay-map-overlay" aria-label="Interactive Relay Rider corridor map" role="region">
           <header className="relay-map-header">
             <div>
-              <span className="relay-map-kicker">PRIMARY MAP · OPENSTREETMAP</span>
+              <span className="relay-map-kicker">PRIMARY MAP · LIVE BASEMAP</span>
               <h2>Pasadena–Eagle Rock–Glendale</h2>
               <p>Explore corridor demand context, research anchors, transit connections, and candidate Access Points.</p>
             </div>
@@ -307,6 +383,15 @@ export default function Prototype() {
 
           <div className="relay-map-frame">
             <div ref={mapNodeRef} className="relay-map-canvas" />
+
+            {tileStatus !== "ready" && (
+              <div className={`relay-map-tile-status ${tileStatus === "error" ? "error" : ""}`} aria-live="polite">
+                {tileStatus === "loading" && "Loading street basemap…"}
+                {tileStatus === "fallback" && "Primary basemap unavailable — switching map source…"}
+                {tileStatus === "error" && "Basemap could not load. Corridor markers remain available while the map source reconnects."}
+              </div>
+            )}
+
             <div className="relay-map-legend" aria-label="Map legend">
               <span><i className="access" />Access Point candidate</span>
               <span><i className="transit" />Transit</span>
