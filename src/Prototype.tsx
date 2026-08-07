@@ -441,6 +441,17 @@ export default function Prototype() {
         .relay-prototype-root .bottom-nav button:nth-child(4).active span::after {
           color: #8a909b;
         }
+        .relay-map-filters {
+          flex-wrap: wrap;
+          overflow: visible;
+        }
+        .relay-map-filters button {
+          min-height: 28px;
+          padding-right: 8px;
+          padding-left: 8px;
+        }
+        .relay-map-legend i.aline { background: #2674b8; }
+        .relay-map-legend i.shuttle { background: #c9791a; }
         .relay-map-tile-status {
           position: absolute;
           z-index: 520;
