@@ -6,8 +6,8 @@ import PrototypePhase1 from "./PrototypePhase1";
 import "leaflet/dist/leaflet.css";
 import "./prototype.css";
 
-type MapFilter = "all" | "access" | "transit" | "institution";
-type MapTag = Exclude<MapFilter, "all">;
+type MapTag = "access" | "aline" | "shuttle" | "institution";
+type MapFilter = "all" | MapTag;
 type TileStatus = "loading" | "ready" | "fallback" | "error";
 
 type CorridorPoint = {
@@ -19,6 +19,7 @@ type CorridorPoint = {
   label: string;
   status: string;
   detail: string;
+  emphasis?: "transfer";
 };
 
 const CORRIDOR_POINTS: CorridorPoint[] = [
@@ -27,8 +28,8 @@ const CORRIDOR_POINTS: CorridorPoint[] = [
     name: "Glendale Transportation Center",
     lat: 34.1236,
     lng: -118.2587,
-    tags: ["access", "transit"],
-    label: "Transit + Access Point candidate",
+    tags: ["access"],
+    label: "Regional transit + Access Point candidate",
     status: "Candidate · administrative review required",
     detail: "Regional rail and bus anchor near the west end of the Pasadena–Eagle Rock–Glendale research corridor.",
   },
@@ -43,34 +44,85 @@ const CORRIDOR_POINTS: CorridorPoint[] = [
     detail: "Public-facing corridor anchor used in the prototype to study low-detour meeting-point compatibility.",
   },
   {
-    id: "memorial-park",
-    name: "Memorial Park Station",
-    lat: 34.1477,
-    lng: -118.1479,
-    tags: ["access", "transit"],
-    label: "Metro A Line + Access Point candidate",
-    status: "Transit anchor · designation not implied",
-    detail: "Central Pasadena transit anchor that can support multimodal match previews and approximate-zone coordination.",
-  },
-  {
     id: "del-mar",
     name: "Del Mar Station",
-    lat: 34.1419,
-    lng: -118.1481,
-    tags: ["access", "transit"],
-    label: "Metro A Line + Access Point candidate",
-    status: "Transit anchor · designation not implied",
-    detail: "South Old Pasadena transit anchor for commuter-option previews that combine planned routes, walking, and rail.",
+    lat: 34.14199,
+    lng: -118.14821,
+    tags: ["aline", "access"],
+    label: "Metro A Line station",
+    status: "Transit anchor · PCC shuttle connection not implied",
+    detail: "Pasadena A Line station included for multimodal commuter-option previews and approximate-zone coordination.",
   },
   {
-    id: "pasadena-city-college",
-    name: "Pasadena City College",
-    lat: 34.1444,
-    lng: -118.1182,
-    tags: ["institution"],
-    label: "Institution destination anchor",
-    status: "Program context · campus rules apply",
-    detail: "Prototype destination anchor for the controlled PCC commuter-program demonstration.",
+    id: "memorial-park",
+    name: "Memorial Park Station",
+    lat: 34.14848,
+    lng: -118.14746,
+    tags: ["aline", "access"],
+    label: "Metro A Line station",
+    status: "Transit anchor · PCC shuttle connection not implied",
+    detail: "Central Pasadena A Line station for rail-linked commute previews. Relay Rider does not label it as a PCC shuttle stop.",
+  },
+  {
+    id: "lake-station",
+    name: "Lake Station",
+    lat: 34.15181,
+    lng: -118.13212,
+    tags: ["aline"],
+    label: "Metro A Line station",
+    status: "Transit anchor · PCC shuttle connection not implied",
+    detail: "Pasadena A Line station shown as a nearby rail option for institution-focused commute planning.",
+  },
+  {
+    id: "allen-station",
+    name: "Allen Station · PCC Shuttle Connection",
+    lat: 34.15244,
+    lng: -118.11356,
+    tags: ["shuttle", "aline", "access"],
+    label: "PCC Shuttle + Metro A Line transfer hub",
+    status: "Published PCC shuttle connection · program eligibility applies",
+    detail: "PCC identifies curbside boarding in front of Allen Station at the PCC Shuttle Stop sign. This is the primary rail-to-campus transfer hub in the prototype.",
+    emphasis: "transfer",
+  },
+  {
+    id: "sierra-madre-villa",
+    name: "Sierra Madre Villa Station",
+    lat: 34.14846,
+    lng: -118.08149,
+    tags: ["aline"],
+    label: "Metro A Line station",
+    status: "Transit anchor · PCC shuttle connection not implied",
+    detail: "East Pasadena A Line station included for multimodal access and corridor-demand context.",
+  },
+  {
+    id: "pcc-colorado-shuttle",
+    name: "PCC Colorado Campus · Lots 6 & 7",
+    lat: 34.14515,
+    lng: -118.11695,
+    tags: ["shuttle", "institution"],
+    label: "PCC Shuttle boarding area",
+    status: "Published boarding area · approximate map pin",
+    detail: "PCC describes the Colorado Campus shuttle stop on the northeast side of campus between parking lots 6 and 7. The pin is approximate rather than a surveyed curb location.",
+  },
+  {
+    id: "pcc-foothill-shuttle",
+    name: "PCC Foothill Campus · Lot C",
+    lat: 34.15072,
+    lng: -118.08644,
+    tags: ["shuttle", "institution"],
+    label: "PCC Shuttle boarding area",
+    status: "Published boarding area · approximate campus pin",
+    detail: "PCC identifies Parking Lot C as the Foothill Campus shuttle boarding area. The prototype pin represents the campus/lot area, not a surveyed curb position.",
+  },
+  {
+    id: "pcc-jefferson",
+    name: "PCC Jefferson Training Center",
+    lat: 34.15492,
+    lng: -118.11881,
+    tags: ["shuttle", "institution"],
+    label: "PCC-affiliated shuttle-network site",
+    status: "Boarding location pending confirmation",
+    detail: "PCC identifies Jefferson as part of its shuttle-served campus network, but the current transportation page does not publish a precise Jefferson boarding point. This pin represents the site only.",
   },
   {
     id: "caltech",
@@ -108,20 +160,36 @@ const CORRIDOR_LINE: [number, number][] = [
   [34.1236, -118.2587],
   [34.1399, -118.2248],
   [34.1462, -118.196],
-  [34.1477, -118.1479],
-  [34.1444, -118.1182],
+  [34.14848, -118.14746],
+  [34.14515, -118.11695],
+];
+
+const A_LINE_STATION_SPINE: [number, number][] = [
+  [34.14199, -118.14821],
+  [34.14848, -118.14746],
+  [34.15181, -118.13212],
+  [34.15244, -118.11356],
+  [34.14846, -118.08149],
+];
+
+const PCC_SHUTTLE_LINE: [number, number][] = [
+  [34.14515, -118.11695],
+  [34.15244, -118.11356],
+  [34.15072, -118.08644],
 ];
 
 const FILTERS: { id: MapFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "access", label: "Access Points" },
-  { id: "transit", label: "Transit" },
+  { id: "aline", label: "A Line" },
+  { id: "shuttle", label: "PCC Shuttle" },
   { id: "institution", label: "Institutions" },
 ];
 
 const MARKER_COLORS: Record<MapTag, string> = {
   access: "#6555d8",
-  transit: "#2674b8",
+  aline: "#2674b8",
+  shuttle: "#c9791a",
   institution: "#2f7a52",
 };
 
@@ -205,8 +273,6 @@ export default function Prototype() {
       fallbackLayer.addTo(map);
     };
 
-    // Netlify proxies this same-origin path to the public Esri World Street Map tile service.
-    // Same-origin delivery avoids the browser/network failures seen with direct third-party tile requests.
     const primaryLayer = L.tileLayer("/map-tiles/{z}/{x}/{y}", {
       maxZoom: 19,
       attribution: "Tiles &copy; Esri",
@@ -229,24 +295,58 @@ export default function Prototype() {
 
     L.control.zoom({ position: "topright" }).addTo(map);
 
-    const corridor = L.polyline(CORRIDOR_LINE, {
-      color: "#6555d8",
-      weight: 4,
-      opacity: 0.65,
-      dashArray: "8 8",
-      lineCap: "round",
-    }).addTo(map);
+    if (filter === "all" || filter === "access") {
+      const corridor = L.polyline(CORRIDOR_LINE, {
+        color: "#6555d8",
+        weight: 4,
+        opacity: 0.56,
+        dashArray: "8 8",
+        lineCap: "round",
+      }).addTo(map);
 
-    corridor.bindTooltip("Modeled research corridor · not a guaranteed route", {
-      sticky: true,
-      direction: "top",
-    });
+      corridor.bindTooltip("Modeled research corridor · not a guaranteed route", {
+        sticky: true,
+        direction: "top",
+      });
+    }
+
+    if (filter === "all" || filter === "aline") {
+      const aLine = L.polyline(A_LINE_STATION_SPINE, {
+        color: "#2674b8",
+        weight: 3,
+        opacity: 0.58,
+        dashArray: "4 6",
+        lineCap: "round",
+      }).addTo(map);
+
+      aLine.bindTooltip("Metro A Line station linkage · schematic, not exact track geometry", {
+        sticky: true,
+        direction: "top",
+      });
+    }
+
+    if (filter === "all" || filter === "shuttle") {
+      const shuttle = L.polyline(PCC_SHUTTLE_LINE, {
+        color: "#c9791a",
+        weight: 4,
+        opacity: 0.72,
+        dashArray: "10 6",
+        lineCap: "round",
+      }).addTo(map);
+
+      shuttle.bindTooltip("PCC shuttle connection · schematic, not live vehicle routing", {
+        sticky: true,
+        direction: "top",
+      });
+    }
 
     visiblePoints.forEach((point) => {
       const primaryTag = filter === "all" ? point.tags[0] : filter;
+      const isTransfer = point.emphasis === "transfer";
+      const isShuttleStop = point.tags.includes("shuttle");
       const marker = L.circleMarker([point.lat, point.lng], {
-        radius: 8,
-        weight: 2,
+        radius: isTransfer ? 11 : isShuttleStop ? 9 : 8,
+        weight: isTransfer ? 3 : 2,
         color: "#ffffff",
         fillColor: MARKER_COLORS[primaryTag],
         fillOpacity: 0.96,
@@ -261,9 +361,12 @@ export default function Prototype() {
       marker.on("click", () => setSelectedPoint(point));
     });
 
-    const bounds = L.latLngBounds(CORRIDOR_LINE);
-    visiblePoints.forEach((point) => bounds.extend([point.lat, point.lng]));
-    map.fitBounds(bounds, { padding: [26, 26], maxZoom: 13 });
+    const bounds = L.latLngBounds(visiblePoints.map((point) => [point.lat, point.lng] as [number, number]));
+    if (filter === "all" || filter === "access") CORRIDOR_LINE.forEach((latLng) => bounds.extend(latLng));
+    if (filter === "all" || filter === "aline") A_LINE_STATION_SPINE.forEach((latLng) => bounds.extend(latLng));
+    if (filter === "all" || filter === "shuttle") PCC_SHUTTLE_LINE.forEach((latLng) => bounds.extend(latLng));
+
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [26, 26], maxZoom: filter === "all" ? 13 : 14 });
     map.on("click", () => setSelectedPoint(null));
 
     const resizeTimer = window.setTimeout(() => map.invalidateSize(true), 120);
@@ -287,7 +390,7 @@ export default function Prototype() {
 
   function openMap() {
     keyboard.hide();
-    setSelectedPoint(CORRIDOR_POINTS[0]);
+    setSelectedPoint(CORRIDOR_POINTS.find((point) => point.id === "allen-station") ?? CORRIDOR_POINTS[0]);
     setTileStatus("loading");
     setMapOpen(true);
   }
@@ -338,6 +441,17 @@ export default function Prototype() {
         .relay-prototype-root .bottom-nav button:nth-child(4).active span::after {
           color: #8a909b;
         }
+        .relay-map-filters {
+          flex-wrap: wrap;
+          overflow: visible;
+        }
+        .relay-map-filters button {
+          min-height: 28px;
+          padding-right: 8px;
+          padding-left: 8px;
+        }
+        .relay-map-legend i.aline { background: #2674b8; }
+        .relay-map-legend i.shuttle { background: #c9791a; }
         .relay-map-tile-status {
           position: absolute;
           z-index: 520;
@@ -369,9 +483,9 @@ export default function Prototype() {
         <section className="relay-map-overlay" aria-label="Interactive Relay Rider corridor map" role="region">
           <header className="relay-map-header">
             <div>
-              <span className="relay-map-kicker">PRIMARY MAP · LIVE BASEMAP</span>
+              <span className="relay-map-kicker">PCC + METRO MOBILITY MAP</span>
               <h2>Pasadena–Eagle Rock–Glendale</h2>
-              <p>Explore corridor demand context, research anchors, transit connections, and candidate Access Points.</p>
+              <p>Explore A Line stations, PCC shuttle connections, institutional anchors, and candidate Access Points.</p>
             </div>
             <button className="relay-map-close" onClick={closeMap} aria-label="Return from corridor map"><Cross2Icon /></button>
           </header>
@@ -402,7 +516,8 @@ export default function Prototype() {
 
             <div className="relay-map-legend" aria-label="Map legend">
               <span><i className="access" />Access Point candidate</span>
-              <span><i className="transit" />Transit</span>
+              <span><i className="aline" />Metro A Line</span>
+              <span><i className="shuttle" />PCC Shuttle</span>
               <span><i className="institution" />Institution</span>
             </div>
 
@@ -420,7 +535,7 @@ export default function Prototype() {
           </div>
 
           <p className="relay-map-footnote">
-            Candidate Access Points and corridor anchors are for research and match-preview context only. A map pin does not mean a location is institutionally approved, reserved, or guaranteed suitable for pickup/dropoff activity.
+            Metro and PCC shuttle connections are mobility-planning context, not guaranteed itineraries. PCC boarding-area pins are approximate where published material does not provide coordinates; Jefferson's precise shuttle boarding point remains pending confirmation. Candidate Access Points remain subject to administrative and site review.
           </p>
         </section>
       )}
