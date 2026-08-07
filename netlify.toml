@@ -2,6 +2,17 @@
   command = "npm run build"
   publish = "dist/client"
 
+# Same-origin tile proxy for the Relay Rider corridor map.
+# This keeps browser map requests on the Netlify site and forwards them
+# to the public Esri World Street Map tile service.
+[[redirects]]
+  from = "/map-tiles/:z/:x/:y"
+  to = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/:z/:y/:x"
+  status = 200
+  force = true
+
+# SPA fallback must remain after the tile proxy so map tile requests
+# are not rewritten to index.html.
 [[redirects]]
   from = "/*"
   to = "/index.html"
