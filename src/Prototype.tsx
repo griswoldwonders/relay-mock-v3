@@ -177,6 +177,7 @@ export default function Prototype() {
         color: "#ffffff",
         fillColor: MARKER_COLORS[primaryTag],
         fillOpacity: 0.96,
+        bubblingMouseEvents: false,
       }).addTo(map);
 
       marker.bindTooltip(point.name, {
