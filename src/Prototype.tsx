@@ -168,8 +168,14 @@ export default function Prototype() {
     });
 
     let activeTileLayer: TileLayer | null = null;
-    let fallbackStarted = false;
     let tileLoadCompleted = false;
+    let fallbackStarted = false;
+    let primaryErrors = 0;
+
+    const markReady = () => {
+      tileLoadCompleted = true;
+      setTileStatus("ready");
+    };
 
     const activateFallback = () => {
       if (fallbackStarted || tileLoadCompleted) return;
@@ -180,44 +186,46 @@ export default function Prototype() {
         map.removeLayer(activeTileLayer);
       }
 
-      const fallbackLayer = L.tileLayer("https://tile.openstreetmap.de/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap contributors",
-        crossOrigin: true,
+      const fallbackLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        subdomains: "abcd",
+        maxZoom: 20,
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        updateWhenIdle: true,
+        keepBuffer: 2,
       });
 
-      fallbackLayer.once("load", () => {
-        tileLoadCompleted = true;
-        setTileStatus("ready");
-      });
-
+      let fallbackErrors = 0;
+      fallbackLayer.once("load", markReady);
       fallbackLayer.on("tileerror", () => {
-        setTileStatus("error");
+        fallbackErrors += 1;
+        if (fallbackErrors >= 3) setTileStatus("error");
       });
 
       activeTileLayer = fallbackLayer;
       fallbackLayer.addTo(map);
     };
 
-    const primaryLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      subdomains: "abcd",
-      maxZoom: 20,
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-      crossOrigin: true,
+    // Netlify proxies this same-origin path to the public Esri World Street Map tile service.
+    // Same-origin delivery avoids the browser/network failures seen with direct third-party tile requests.
+    const primaryLayer = L.tileLayer("/map-tiles/{z}/{x}/{y}", {
+      maxZoom: 19,
+      attribution: "Tiles &copy; Esri",
+      updateWhenIdle: true,
+      keepBuffer: 2,
     });
 
-    primaryLayer.once("load", () => {
-      tileLoadCompleted = true;
-      setTileStatus("ready");
+    primaryLayer.once("load", markReady);
+    primaryLayer.on("tileerror", () => {
+      primaryErrors += 1;
+      if (primaryErrors >= 2) activateFallback();
     });
 
-    primaryLayer.on("tileerror", activateFallback);
     activeTileLayer = primaryLayer;
     primaryLayer.addTo(map);
 
     const fallbackTimer = window.setTimeout(() => {
       if (!tileLoadCompleted) activateFallback();
-    }, 4500);
+    }, 5000);
 
     L.control.zoom({ position: "topright" }).addTo(map);
 
@@ -250,9 +258,7 @@ export default function Prototype() {
         offset: [0, -8],
       });
 
-      marker.on("click", () => {
-        setSelectedPoint(point);
-      });
+      marker.on("click", () => setSelectedPoint(point));
     });
 
     const bounds = L.latLngBounds(CORRIDOR_LINE);
@@ -260,11 +266,13 @@ export default function Prototype() {
     map.fitBounds(bounds, { padding: [26, 26], maxZoom: 13 });
     map.on("click", () => setSelectedPoint(null));
 
-    const resizeTimer = window.setTimeout(() => map.invalidateSize(), 120);
+    const resizeTimer = window.setTimeout(() => map.invalidateSize(true), 120);
+    const secondResizeTimer = window.setTimeout(() => map.invalidateSize(true), 450);
     leafletMapRef.current = map;
 
     return () => {
       window.clearTimeout(resizeTimer);
+      window.clearTimeout(secondResizeTimer);
       window.clearTimeout(fallbackTimer);
       map.remove();
       if (leafletMapRef.current === map) leafletMapRef.current = null;
