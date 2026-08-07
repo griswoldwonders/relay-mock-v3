@@ -1,0 +1,96 @@
+@import "./prototype.css";
+
+.phase1-shell .green-tile { background: #e8f6ee; color: #24754a; }
+.phase1-shell .trust-hero,
+.phase1-shell .message-card,
+.phase1-shell .incentive-rule {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(32, 37, 47, 0.07);
+}
+.phase1-shell .trust-hero { background: linear-gradient(145deg, #eaf7ef, #ffffff 72%); }
+.phase1-shell .trust-hero > svg { flex: 0 0 auto; width: 28px; height: 28px; color: #24754a; }
+.phase1-shell .trust-hero small { color: #29704c; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
+.phase1-shell .trust-hero strong { display: block; margin: 4px 0; font-size: 17px; }
+.phase1-shell .trust-hero p,
+.phase1-shell .message-card p,
+.phase1-shell .incentive-rule p { margin: 0; color: #626a76; font-size: 11px; line-height: 1.5; }
+
+.phase1-shell .verification-list { display: grid; gap: 8px; }
+.phase1-shell .verification-row,
+.phase1-shell .toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border-radius: 17px;
+  background: #ffffff;
+  box-shadow: 0 7px 22px rgba(32, 37, 47, 0.05);
+}
+.phase1-shell .verification-row > div,
+.phase1-shell .toggle-row > div { flex: 1; }
+.phase1-shell .verification-row strong,
+.phase1-shell .toggle-row strong { display: block; font-size: 12px; }
+.phase1-shell .verification-row small,
+.phase1-shell .toggle-row small { display: block; margin-top: 3px; color: #777e8a; font-size: 9px; line-height: 1.4; }
+.phase1-shell .verification-row > svg { color: #2a7d50; }
+.phase1-shell .dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #aab0b9; }
+.phase1-shell .dot.good { background: #2a7d50; }
+.phase1-shell .dot.neutral { background: #b9a56d; }
+.phase1-shell .trust-section-title,
+.phase1-shell .admin-title { margin-top: 20px; margin-bottom: 9px; }
+
+.phase1-shell .switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; border-radius: 99px; background: #d8dce2; }
+.phase1-shell .switch i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+.phase1-shell .switch.on { background: #6555d8; }
+.phase1-shell .switch.on i { left: 19px; }
+
+.phase1-shell .message-card { display: block; }
+.phase1-shell .message-card h3 { margin: 10px 0 6px; font-size: 15px; }
+.phase1-shell .message-card .secondary-action { margin-top: 14px; }
+.phase1-shell .status-pill { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 6px 9px; border-radius: 999px; background: #f2f3f6; color: #646b77; font-size: 9px; font-weight: 700; }
+.phase1-shell .status-pill.good { background: #e8f6ee; color: #24754a; }
+.phase1-shell .status-pill.locked { background: #f0efff; color: #5144ad; }
+.phase1-shell .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+
+.phase1-shell .feedback-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+.phase1-shell .feedback-card { padding: 12px; border-radius: 16px; background: #ffffff; box-shadow: 0 7px 22px rgba(32, 37, 47, 0.05); }
+.phase1-shell .feedback-card small { color: #777e8a; font-size: 9px; }
+.phase1-shell .feedback-card strong { display: block; margin-top: 5px; font-size: 11px; }
+.phase1-shell .report-row { margin-top: 14px; }
+.phase1-shell .report-row.reported { outline: 1px solid #e3b29f; }
+
+.phase1-shell .mini-heading { margin: 14px 0 8px; font-size: 13px; }
+.phase1-shell .itinerary { position: relative; display: grid; gap: 8px; margin-bottom: 12px; }
+.phase1-shell .itinerary-row { display: flex; gap: 10px; align-items: flex-start; padding: 11px; border-radius: 15px; background: #f7f8fa; }
+.phase1-shell .itinerary-row > span { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border-radius: 50%; background: #ece9ff; color: #5749bd; font-size: 9px; font-weight: 700; }
+.phase1-shell .itinerary-row small { display: block; color: #737a86; font-size: 9px; }
+.phase1-shell .itinerary-row strong { display: block; margin-top: 3px; font-size: 10px; line-height: 1.4; }
+.phase1-shell .score-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+.phase1-shell .review-list { display: grid; gap: 9px; margin-top: 9px; }
+.phase1-shell .review-card { padding: 14px; border-radius: 18px; background: #ffffff; box-shadow: 0 7px 22px rgba(32, 37, 47, 0.05); }
+.phase1-shell .review-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.phase1-shell .review-card-top > span { color: #787f8a; font-size: 9px; font-weight: 700; }
+.phase1-shell .review-card > strong { font-size: 12px; }
+.phase1-shell .review-card > p { margin: 5px 0 10px; color: #68707d; font-size: 10px; line-height: 1.4; }
+.phase1-shell .risk { padding: 4px 7px; border-radius: 999px; background: #eef0f3; color: #626977; font-size: 8px; }
+.phase1-shell .risk.elevated { background: #fff2d6; color: #8a6215; }
+.phase1-shell .risk.priority { background: #ffe9e4; color: #a54f39; }
+.phase1-shell .review-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.phase1-shell .review-actions button { border: 0; border-radius: 10px; padding: 7px 9px; background: #ece9ff; color: #5446b8; font-size: 9px; font-weight: 700; }
+.phase1-shell .review-actions span { color: #747b87; font-size: 9px; font-weight: 700; }
+
+.phase1-shell .incentive-rule { margin-top: 11px; border: 1px solid #efdfae; background: #fff9e9; box-shadow: none; color: #785a15; }
+.phase1-shell .incentive-rule > svg { flex: 0 0 auto; color: #a66b00; }
+.phase1-shell .incentive-rule strong { display: block; margin-bottom: 3px; font-size: 12px; }
+.phase1-shell .incentive-rule p { color: #765f2a; }
+
+@media (max-width: 390px) {
+  .phase1-shell .feedback-grid { grid-template-columns: 1fr; }
+  .phase1-shell .status-pill { border-radius: 12px; }
+}
