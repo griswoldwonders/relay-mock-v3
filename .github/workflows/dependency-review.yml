@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   dependency-review:
@@ -13,7 +14,14 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Review dependency changes
+        id: dependency_review
+        continue-on-error: true
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
           retry-on-snapshot-warnings: true
+
+      - name: Explain dependency graph requirement
+        if: steps.dependency_review.outcome == 'failure'
+        run: |
+          echo "::warning::GitHub Dependency Review could not run. If the log says 'Dependency review is not supported on this repository,' enable Dependency graph in Settings > Code security and analysis. Until then, npm audit in the Build and Security Checks workflow remains the blocking dependency scan."
