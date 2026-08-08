@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BarChartIcon,
   CalendarIcon,
@@ -10,52 +10,70 @@ import {
   SewingPinIcon,
 } from "@radix-ui/react-icons";
 import { KeyboardInput, MobileScroll, useKeyboard } from "./mobile";
+import {
+  CONSENT_VERSION,
+  getOrCreateParticipantToken,
+  getStoredSubmissionId,
+  loadResearchSubmission,
+  saveResearchSubmission,
+  withdrawResearchSubmission,
+  type ResearchSubmissionPayload,
+  type ResearchSubmissionRecord,
+} from "./researchBeta";
 import "./phase1.css";
 
 type Tab = "home" | "commute" | "options" | "trust" | "program";
 type CommuteMode = "need" | "route";
+type SaveState = "idle" | "saving" | "saved" | "error";
+type LoadState = "loading" | "ready" | "error";
 
 type CommuteForm = {
   originZone: string;
   destination: string;
-  morningWindow: string;
-  flexibility: string;
-  accessPointPreference: string;
+  arrivalStart: string;
+  arrivalEnd: string;
+  returnStart: string;
+  returnEnd: string;
+  flexibilityMinutes: string;
+  currentMode: string;
+  parkingDifficulty: string;
+  accessPointWilling: boolean;
+  preferredAccessPoint: string;
   transitPreference: string;
   evPreference: string;
   accessibilityNeeds: string;
-  parkingDifficulty: string;
+  contributionBand: string;
   capacity: string;
-  maxDetour: string;
+  maxDetourMinutes: string;
   plannedRouteNote: string;
-};
-
-type PrototypeSubmission = {
-  mode: CommuteMode;
-  days: string[];
-  form: CommuteForm;
 };
 
 const EMPTY_FORM: CommuteForm = {
   originZone: "",
   destination: "",
-  morningWindow: "",
-  flexibility: "",
-  accessPointPreference: "",
+  arrivalStart: "",
+  arrivalEnd: "",
+  returnStart: "",
+  returnEnd: "",
+  flexibilityMinutes: "15",
+  currentMode: "",
+  parkingDifficulty: "",
+  accessPointWilling: false,
+  preferredAccessPoint: "",
   transitPreference: "",
   evPreference: "",
   accessibilityNeeds: "",
-  parkingDifficulty: "",
+  contributionBand: "",
   capacity: "",
-  maxDetour: "",
+  maxDetourMinutes: "",
   plannedRouteNote: "",
 };
 
 const VERIFICATION_ITEMS = [
-  { label: "Identity", status: "Not connected in this prototype" },
+  { label: "Identity", status: "Not connected in this research beta" },
   { label: "Institution eligibility", status: "Not verified" },
-  { label: "Phone & email", status: "Not verified" },
-  { label: "Vehicle / route documents", status: "Nothing submitted" },
+  { label: "Phone & email", status: "Not collected for participant connection" },
+  { label: "Vehicle / route documents", status: "Not reviewed" },
 ];
 
 export default function PrototypePhase1() {
@@ -64,9 +82,17 @@ export default function PrototypePhase1() {
   const [commuteMode, setCommuteMode] = useState<CommuteMode>("need");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [form, setForm] = useState<CommuteForm>(EMPTY_FORM);
-  const [submission, setSubmission] = useState<PrototypeSubmission | null>(null);
-  const [approximateZones, setApproximateZones] = useState(true);
-  const [maskedContact, setMaskedContact] = useState(true);
+  const [submission, setSubmission] = useState<ResearchSubmissionRecord | null>(null);
+  const [participantToken, setParticipantToken] = useState("");
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveError, setSaveError] = useState("");
+  const [age18Plus, setAge18Plus] = useState(false);
+  const [dataConsent, setDataConsent] = useState(false);
+  const [prototypeAcknowledged, setPrototypeAcknowledged] = useState(false);
+  const [withdrawConfirm, setWithdrawConfirm] = useState(false);
+  const [withdrawError, setWithdrawError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const title = useMemo(() => ({
     home: "Relay Rider",
@@ -77,11 +103,72 @@ export default function PrototypePhase1() {
   })[tab], [tab]);
 
   const canSubmit = Boolean(
+    participantToken &&
     form.originZone.trim() &&
     form.destination.trim() &&
-    form.morningWindow.trim() &&
-    selectedDays.length > 0,
+    form.arrivalStart &&
+    form.arrivalEnd &&
+    selectedDays.length > 0 &&
+    age18Plus &&
+    dataConsent &&
+    prototypeAcknowledged &&
+    (commuteMode === "need" || form.plannedRouteNote.trim()),
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const token = getOrCreateParticipantToken();
+    setParticipantToken(token);
+    const submissionId = getStoredSubmissionId();
+
+    if (!submissionId) {
+      setLoadState("ready");
+      return () => { cancelled = true; };
+    }
+
+    loadResearchSubmission(token, submissionId)
+      .then((record) => {
+        if (cancelled) return;
+        if (record && record.status === "submitted") {
+          hydrateFromRecord(record);
+          setSubmission(record);
+          setAge18Plus(record.age18Plus);
+          setDataConsent(true);
+          setPrototypeAcknowledged(true);
+        }
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState("error");
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  function hydrateFromRecord(record: ResearchSubmissionRecord) {
+    setCommuteMode(record.submissionType === "planned_route" ? "route" : "need");
+    setSelectedDays(record.days);
+    setForm({
+      originZone: record.originZone,
+      destination: record.destinationZone,
+      arrivalStart: record.arrivalStart || "",
+      arrivalEnd: record.arrivalEnd || "",
+      returnStart: record.returnStart || "",
+      returnEnd: record.returnEnd || "",
+      flexibilityMinutes: record.flexibilityMinutes?.toString() ?? "15",
+      currentMode: record.currentMode || "",
+      parkingDifficulty: record.parkingDifficulty || "",
+      accessPointWilling: record.accessPointWilling,
+      preferredAccessPoint: record.preferredAccessPoint || "",
+      transitPreference: record.transitPreference || "",
+      evPreference: record.evPreference || "",
+      accessibilityNeeds: record.accessibilityNotes || "",
+      contributionBand: record.contributionBand || "",
+      capacity: record.capacity?.toString() ?? "",
+      maxDetourMinutes: record.maxDetourMinutes?.toString() ?? "",
+      plannedRouteNote: record.plannedRouteNote || "",
+    });
+  }
 
   function toggleDay(day: string) {
     setSelectedDays((current) => current.includes(day)
@@ -89,30 +176,93 @@ export default function PrototypePhase1() {
       : [...current, day]);
   }
 
-  function updateField(key: keyof CommuteForm, value: string) {
+  function updateField<K extends keyof CommuteForm>(key: K, value: CommuteForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+    if (saveState !== "idle") setSaveState("idle");
+    setSaveError("");
   }
 
-  function submitCommute() {
+  function makePayload(): ResearchSubmissionPayload {
+    return {
+      submissionType: commuteMode === "route" ? "planned_route" : "commute_need",
+      consentVersion: CONSENT_VERSION,
+      age18Plus,
+      originZone: form.originZone.trim(),
+      destinationZone: form.destination.trim(),
+      days: [...selectedDays],
+      arrivalStart: form.arrivalStart,
+      arrivalEnd: form.arrivalEnd,
+      returnStart: form.returnStart,
+      returnEnd: form.returnEnd,
+      flexibilityMinutes: toOptionalNumber(form.flexibilityMinutes),
+      currentMode: form.currentMode,
+      parkingDifficulty: commuteMode === "need" ? form.parkingDifficulty : "",
+      accessPointWilling: form.accessPointWilling,
+      preferredAccessPoint: form.accessPointWilling ? form.preferredAccessPoint : "",
+      transitPreference: form.transitPreference,
+      evPreference: form.evPreference,
+      accessibilityNotes: form.accessibilityNeeds.trim(),
+      contributionBand: form.contributionBand,
+      capacity: commuteMode === "route" ? toOptionalNumber(form.capacity) : null,
+      maxDetourMinutes: commuteMode === "route" ? toOptionalNumber(form.maxDetourMinutes) : null,
+      plannedRouteNote: commuteMode === "route" ? form.plannedRouteNote.trim() : "",
+      approximateZones: true,
+      maskedContact: true,
+    };
+  }
+
+  async function submitCommute() {
     if (!canSubmit) return;
     keyboard.hide();
-    setSubmission({
-      mode: commuteMode,
-      days: [...selectedDays],
-      form: { ...form },
-    });
-    setTab("options");
+    setSaveState("saving");
+    setSaveError("");
+    setNotice("");
+
+    try {
+      const record = await saveResearchSubmission(participantToken, makePayload(), submission?.id ?? getStoredSubmissionId());
+      setSubmission(record);
+      setSaveState("saved");
+      setTab("options");
+    } catch (error) {
+      setSaveState("error");
+      setSaveError(error instanceof Error ? error.message : "Your commute signal could not be saved.");
+    }
   }
 
-  function resetPrototypeSession() {
+  function startNewDraft(mode: CommuteMode) {
     keyboard.hide();
-    setCommuteMode("need");
-    setSelectedDays([]);
-    setForm(EMPTY_FORM);
-    setSubmission(null);
-    setApproximateZones(true);
-    setMaskedContact(true);
-    setTab("home");
+    setCommuteMode(mode);
+    if (!submission) {
+      setForm(EMPTY_FORM);
+      setSelectedDays([]);
+      setAge18Plus(false);
+      setDataConsent(false);
+      setPrototypeAcknowledged(false);
+    }
+    setSaveError("");
+    setSaveState("idle");
+    setTab("commute");
+  }
+
+  async function confirmWithdrawal() {
+    if (!submission || !participantToken) return;
+    keyboard.hide();
+    setWithdrawError("");
+    try {
+      const withdrawn = await withdrawResearchSubmission(participantToken, submission.id);
+      if (!withdrawn) throw new Error("The stored submission could not be withdrawn.");
+      setSubmission(null);
+      setForm(EMPTY_FORM);
+      setSelectedDays([]);
+      setAge18Plus(false);
+      setDataConsent(false);
+      setPrototypeAcknowledged(false);
+      setWithdrawConfirm(false);
+      setNotice("Your research submission was withdrawn. No commuter option or participant connection was created.");
+      setTab("home");
+    } catch (error) {
+      setWithdrawError(error instanceof Error ? error.message : "Withdrawal could not be completed.");
+    }
   }
 
   return (
@@ -121,7 +271,7 @@ export default function PrototypePhase1() {
         <main className="relay-content">
           <header className="page-heading">
             <div>
-              <span className="kicker">PCC-FOCUSED RESEARCH PROTOTYPE</span>
+              <span className="kicker">PCC-FOCUSED RESEARCH BETA</span>
               <h1>{title}</h1>
             </div>
             <button className="profile-button" aria-label="Open Trust Center" onClick={() => setTab("trust")}><PersonIcon /></button>
@@ -130,47 +280,52 @@ export default function PrototypePhase1() {
           <section className="beta-notice">
             <LockClosedIcon />
             <div>
-              <strong>User-testing environment</strong>
-              <p>This prototype does not provide live transportation, confirmed commuter matches, payments, guaranteed incentives, or verified participant connections. Information entered here remains in this browser session only.</p>
+              <strong>Research beta · no live transportation</strong>
+              <p>This environment collects participant-provided commute signals for product research. It does not provide confirmed commuter matches, transportation purchases, guaranteed incentives, or verified participant connections.</p>
             </div>
           </section>
+
+          {loadState === "error" && (
+            <section className="prototype-disclaimer"><ExclamationTriangleIcon /><p><strong>Stored record unavailable.</strong> You can still review the prototype, but do not assume a submission is saved until the app confirms it.</p></section>
+          )}
+          {notice && <section className="research-notice"><p>{notice}</p></section>}
 
           {tab === "home" && (
             <>
               <section className="hero-card">
-                <small>COMMUTER COORDINATION PROTOTYPE</small>
+                <small>COMMUTER COORDINATION RESEARCH</small>
                 <h2>Start with your actual commute pattern.</h2>
-                <p>Share approximate zones, recurring days, schedule windows, Access Point preferences, and multimodal preferences. Relay Rider can use those signals to prepare governed commuter-option previews once real participant and matching data are connected.</p>
+                <p>Share approximate zones, recurring days, time windows, Access Point willingness, current commute mode, and multimodal preferences. Relay Rider stores the signal for research and future governed match-preview testing.</p>
                 <div className="hero-actions">
-                  <button className="primary-action" onClick={() => { setCommuteMode("need"); setTab("commute"); }}>Set up my commute</button>
-                  <button className="secondary-action" onClick={() => { setCommuteMode("route"); setTab("commute"); }}>Register a planned route</button>
+                  <button className="primary-action" onClick={() => startNewDraft("need")}>{submission ? "Edit my commute" : "Set up my commute"}</button>
+                  <button className="secondary-action" onClick={() => startNewDraft("route")}>{submission?.submissionType === "planned_route" ? "Edit planned route" : "Register a planned route"}</button>
                 </div>
               </section>
 
               <section className="status-card">
                 <div className="status-icon">{submission ? <CalendarIcon /> : <PersonIcon />}</div>
                 <div>
-                  <small>PROTOTYPE SESSION</small>
-                  <strong>{submission ? "Commute signal saved" : "No commute profile yet"}</strong>
+                  <small>RESEARCH PARTICIPANT RECORD</small>
+                  <strong>{loadState === "loading" ? "Checking this device…" : submission ? "Commute signal submitted" : "No stored commute signal"}</strong>
                   <p>{submission
-                    ? `${submission.form.originZone} → ${submission.form.destination} · ${submission.days.join(", ")}`
-                    : "Enter your own commute information to begin testing the participant flow."}</p>
+                    ? `${submission.originZone} → ${submission.destinationZone} · ${submission.days.join(", ")}`
+                    : "Submit your own approximate commute information to create a participant research record."}</p>
                 </div>
-                <span>{submission ? "Saved" : "Start"}</span>
+                <span>{submission ? "Stored" : "Start"}</span>
               </section>
 
-              <div className="section-title"><h2>What you can test</h2></div>
-              <button className="action-row" onClick={() => setTab("commute")}>
+              <div className="section-title"><h2>Research-beta flow</h2></div>
+              <button className="action-row" onClick={() => startNewDraft(submission?.submissionType === "planned_route" ? "route" : "need")}>
                 <span className="icon-tile"><CalendarIcon /></span>
-                <div><strong>Commute intake</strong><small>Approximate zones · schedule · Access Point preferences</small></div><ChevronRightIcon />
+                <div><strong>Structured commuter intake</strong><small>Approximate zones · time windows · mode · Access Point willingness</small></div><ChevronRightIcon />
               </button>
               <button className="action-row" onClick={() => setTab("options")}>
                 <span className="icon-tile"><SewingPinIcon /></span>
-                <div><strong>Commuter-option state</strong><small>Empty until a real matching source is connected</small></div><ChevronRightIcon />
+                <div><strong>Commuter-option state</strong><small>No fabricated matches; future previews require eligible real records</small></div><ChevronRightIcon />
               </button>
-              <button className="action-row" onClick={() => setTab("trust")}>
+              <button className="action-row" onClick={() => setTab("program")}>
                 <span className="icon-tile green-tile"><LockClosedIcon /></span>
-                <div><strong>Privacy and trust controls</strong><small>Participant-facing defaults without fake verification</small></div><ChevronRightIcon />
+                <div><strong>Manage my submission</strong><small>Participant reference · edit · withdrawal</small></div><ChevronRightIcon />
               </button>
             </>
           )}
@@ -182,9 +337,19 @@ export default function PrototypePhase1() {
                 <button className={commuteMode === "route" ? "active" : ""} onClick={() => setCommuteMode("route")}>I already travel this route</button>
               </div>
 
+              <section className="consent-card">
+                <small>RESEARCH PARTICIPATION & DATA USE</small>
+                <h2>Before you submit</h2>
+                <p>Relay Rider will store the approximate commute information you enter below so the research team can study corridor demand, parking pressure, multimodal preferences, planned-route compatibility, and prototype usability. Do not enter a home address.</p>
+                <ConsentRow checked={age18Plus} onChange={setAge18Plus} title="I am 18 or older" detail="This research prototype is intended for adult participants." />
+                <ConsentRow checked={prototypeAcknowledged} onChange={setPrototypeAcknowledged} title="I understand this is a research beta" detail="A submission is not a transportation purchase, confirmed fare, guaranteed match, or guaranteed route." />
+                <ConsentRow checked={dataConsent} onChange={setDataConsent} title="I consent to storage and research use of this commute signal" detail="The record uses approximate zones and a random participant reference. You can edit or withdraw it from this device." />
+                <p className="consent-footnote">Exact retention timing and the final external-beta deletion policy will be published before broader enrollment. Participant-to-participant contact is not enabled in this build.</p>
+              </section>
+
               <section className="notice-at-collection">
                 <LockClosedIcon />
-                <p><strong>Privacy by default:</strong> use approximate origin/destination zones and time windows. Do not enter a home address in this research prototype.</p>
+                <p><strong>Privacy by default:</strong> approximate origin/destination zones are required. Exact private addresses and participant contact details are not requested for matching in this research-beta intake.</p>
               </section>
 
               <section className="form-card">
@@ -201,36 +366,74 @@ export default function PrototypePhase1() {
 
                 <div className="field-block">
                   <small>Recurring days *</small>
-                  <div className="day-row">{["Mon", "Tue", "Wed", "Thu", "Fri"].map((day) => (
+                  <div className="day-row">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
                     <button key={day} type="button" className={selectedDays.includes(day) ? "selected" : ""} onClick={() => toggleDay(day)}>{day}</button>
                   ))}</div>
                 </div>
 
-                <PrototypeInput id="morning-window" label="Travel / arrival window *" placeholder="e.g. arrive between 8:00–8:30 AM" value={form.morningWindow} onChange={(value) => updateField("morningWindow", value)} />
-                <PrototypeInput id="flexibility" label="Schedule flexibility" placeholder="e.g. ±15 minutes" value={form.flexibility} onChange={(value) => updateField("flexibility", value)} />
-                <PrototypeInput id="access-point" label="Access Point preference" placeholder="e.g. public transit station or campus stop" value={form.accessPointPreference} onChange={(value) => updateField("accessPointPreference", value)} />
-                <PrototypeInput id="transit-preference" label="Transit / shuttle preference" placeholder="e.g. A Line and PCC shuttle are acceptable" value={form.transitPreference} onChange={(value) => updateField("transitPreference", value)} />
-                <PrototypeInput id="ev-preference" label="EV / hybrid preference" placeholder="Optional preference" value={form.evPreference} onChange={(value) => updateField("evPreference", value)} />
-                <PrototypeInput id="accessibility" label="Accessibility needs" placeholder="Optional; describe only what is needed for trip planning" value={form.accessibilityNeeds} onChange={(value) => updateField("accessibilityNeeds", value)} />
+                <div className="paired-fields">
+                  <PrototypeTimeInput id="arrival-start" label="Arrival window starts *" value={form.arrivalStart} onChange={(value) => updateField("arrivalStart", value)} />
+                  <PrototypeTimeInput id="arrival-end" label="Arrival window ends *" value={form.arrivalEnd} onChange={(value) => updateField("arrivalEnd", value)} />
+                </div>
+                <div className="paired-fields">
+                  <PrototypeTimeInput id="return-start" label="Return window starts" value={form.returnStart} onChange={(value) => updateField("returnStart", value)} />
+                  <PrototypeTimeInput id="return-end" label="Return window ends" value={form.returnEnd} onChange={(value) => updateField("returnEnd", value)} />
+                </div>
 
-                {commuteMode === "need" ? (
-                  <PrototypeInput id="parking-difficulty" label="Parking difficulty" placeholder="Optional; e.g. often difficult" value={form.parkingDifficulty} onChange={(value) => updateField("parkingDifficulty", value)} />
-                ) : (
+                <PrototypeSelect id="flexibility" label="Schedule flexibility" value={form.flexibilityMinutes} onChange={(value) => updateField("flexibilityMinutes", value)} options={[
+                  ["0", "No flexibility"], ["10", "±10 minutes"], ["15", "±15 minutes"], ["30", "±30 minutes"], ["45", "±45 minutes"], ["60", "±60 minutes"],
+                ]} />
+                <PrototypeSelect id="current-mode" label="Current commute mode" value={form.currentMode} onChange={(value) => updateField("currentMode", value)} placeholder="Select current mode" options={[
+                  ["solo_drive", "Drive alone"], ["carpool", "Carpool / shared commute"], ["transit", "Transit"], ["walk_bike", "Walk / bike / micromobility"], ["mixed", "Mixed / multimodal"], ["other", "Other"],
+                ]} />
+
+                {commuteMode === "need" && (
+                  <PrototypeSelect id="parking-difficulty" label="Parking difficulty" value={form.parkingDifficulty} onChange={(value) => updateField("parkingDifficulty", value)} placeholder="Select parking experience" options={[
+                    ["rarely", "Rarely difficult"], ["sometimes", "Sometimes difficult"], ["often", "Often difficult"], ["not_applicable", "Parking not applicable"],
+                  ]} />
+                )}
+
+                <ChoiceToggle title="I am willing to use a public Access Point" detail="Examples include a reviewed transit station, campus stop, or other public coordination point." enabled={form.accessPointWilling} onChange={(value) => updateField("accessPointWilling", value)} />
+                {form.accessPointWilling && (
+                  <PrototypeSelect id="preferred-access-point" label="Preferred Access Point / transfer context" value={form.preferredAccessPoint} onChange={(value) => updateField("preferredAccessPoint", value)} placeholder="No preference" options={[
+                    ["allen_station", "Allen Station · A Line / PCC shuttle context"],
+                    ["pcc_colorado", "PCC Colorado Campus · Lots 6/7 area"],
+                    ["pcc_foothill", "PCC Foothill Campus · Lot C area"],
+                    ["memorial_park", "Memorial Park Station"],
+                    ["glendale_transit", "Glendale Transportation Center"],
+                    ["other_public", "Another public Access Point"],
+                  ]} />
+                )}
+
+                <PrototypeSelect id="transit-preference" label="Transit / PCC shuttle willingness" value={form.transitPreference} onChange={(value) => updateField("transitPreference", value)} placeholder="Select preference" options={[
+                  ["no_preference", "No preference"], ["aline_ok", "Metro A Line is acceptable"], ["pcc_shuttle_ok", "PCC shuttle is acceptable"], ["aline_shuttle_ok", "A Line + PCC shuttle are acceptable"], ["avoid_transit", "Prefer not to use transit"],
+                ]} />
+                <PrototypeSelect id="ev-preference" label="EV / hybrid preference" value={form.evPreference} onChange={(value) => updateField("evPreference", value)} placeholder="Select preference" options={[
+                  ["no_preference", "No vehicle preference"], ["prefer_clean_vehicle", "Prefer EV / hybrid when compatible"],
+                ]} />
+                <PrototypeSelect id="contribution-band" label="Willingness to contribute toward a compatible planned-route option" value={form.contributionBand} onChange={(value) => updateField("contributionBand", value)} placeholder="Optional" options={[
+                  ["unsure", "Not sure yet"], ["none", "$0"], ["up_to_3", "Up to $3"], ["up_to_5", "Up to $5"], ["up_to_8", "Up to $8"],
+                ]} />
+                <p className="field-helper">This is a route-interest / willingness-to-contribute signal only. It is not a confirmed fare or transportation purchase.</p>
+                <PrototypeInput id="accessibility" label="Accessibility needs" placeholder="Optional; only enter trip-planning needs you want considered" value={form.accessibilityNeeds} onChange={(value) => updateField("accessibilityNeeds", value)} />
+
+                {commuteMode === "route" && (
                   <>
-                    <PrototypeInput id="capacity" label="Available capacity" placeholder="e.g. 1 seat" value={form.capacity} onChange={(value) => updateField("capacity", value)} />
-                    <PrototypeInput id="max-detour" label="Maximum detour" placeholder="e.g. up to 8 minutes" value={form.maxDetour} onChange={(value) => updateField("maxDetour", value)} />
-                    <PrototypeInput id="planned-route-note" label="Existing-route note" placeholder="Briefly describe the route you already plan to travel" value={form.plannedRouteNote} onChange={(value) => updateField("plannedRouteNote", value)} />
+                    <PrototypeSelect id="capacity" label="Available capacity" value={form.capacity} onChange={(value) => updateField("capacity", value)} placeholder="Select capacity" options={[["1", "1 seat"], ["2", "2 seats"], ["3", "3 seats"], ["4", "4 seats"]]} />
+                    <PrototypeSelect id="max-detour" label="Maximum detour" value={form.maxDetourMinutes} onChange={(value) => updateField("maxDetourMinutes", value)} placeholder="Select detour limit" options={[["0", "No detour"], ["5", "Up to 5 minutes"], ["8", "Up to 8 minutes"], ["10", "Up to 10 minutes"], ["15", "Up to 15 minutes"]]} />
+                    <PrototypeInput id="planned-route-note" label="Existing planned route *" placeholder="Briefly describe the trip you already intend to make" value={form.plannedRouteNote} onChange={(value) => updateField("plannedRouteNote", value)} />
                   </>
                 )}
 
                 <div className="prototype-privacy-summary">
                   <LockClosedIcon />
-                  <div><strong>Approximate-zone mode is on.</strong><p>Exact private locations are not required for this prototype intake.</p></div>
+                  <div><strong>Approximate-zone mode and contact masking are enforced.</strong><p>The research record does not require an exact home address or participant-to-participant contact information.</p></div>
                 </div>
 
-                <button className="primary-action" disabled={!canSubmit} onClick={submitCommute}>{commuteMode === "need" ? "Save commute signal" : "Save planned-route signal"}</button>
-                {!canSubmit && <p className="form-footnote">Complete origin zone, destination zone, at least one recurring day, and a travel/arrival window to continue.</p>}
-                <p className="form-footnote">Saving this prototype form does not purchase transportation, activate a route, create a confirmed fare, guarantee a match, or send information to another participant.</p>
+                <button className="primary-action" disabled={!canSubmit || saveState === "saving"} onClick={submitCommute}>{saveState === "saving" ? "Saving research record…" : submission ? "Update commute signal" : commuteMode === "need" ? "Submit commute signal" : "Submit planned-route signal"}</button>
+                {!canSubmit && <p className="form-footnote">Complete the three consent acknowledgments, origin zone, destination zone, at least one recurring day, and both arrival-window times. Planned routes also require an existing-route description.</p>}
+                {saveState === "error" && <p className="form-error">Not saved: {saveError}</p>}
+                <p className="form-footnote">Submission does not purchase transportation, activate a route, create a confirmed fare, guarantee acceptance, or expose your record directly to another participant.</p>
               </section>
             </>
           )}
@@ -239,21 +442,21 @@ export default function PrototypePhase1() {
             <>
               <section className="prototype-disclaimer">
                 <ExclamationTriangleIcon />
-                <p><strong>No seeded commuter matches.</strong> This user-test build intentionally does not fabricate compatibility scores, planned-route participants, contributions, incentives, or itineraries.</p>
+                <p><strong>No fabricated commuter matches.</strong> Real previews will require compatible stored commuter-need and planned-route records plus program-rule and administrative-review logic.</p>
               </section>
 
               {submission ? (
                 <>
                   <section className="session-summary-card">
-                    <small>YOUR PROTOTYPE SIGNAL</small>
-                    <strong>{submission.form.originZone} → {submission.form.destination}</strong>
-                    <p>{submission.days.join(", ")} · {submission.form.morningWindow}</p>
-                    <span>{submission.mode === "need" ? "Commuter need" : "Planned route"}</span>
+                    <small>STORED RESEARCH SIGNAL · {submission.participantRef}</small>
+                    <strong>{submission.originZone} → {submission.destinationZone}</strong>
+                    <p>{submission.days.join(", ")} · arrival {formatTimeRange(submission.arrivalStart, submission.arrivalEnd)}</p>
+                    <span>{submission.submissionType === "commute_need" ? "Commuter need" : "Planned route"}</span>
                   </section>
                   <EmptyState
                     icon={<SewingPinIcon />}
                     title="No commuter options yet"
-                    body="Your commute signal is saved for this browser session. Real commuter options should only appear after a matching data source, eligible participant records, program rules, and administrative review workflow are connected."
+                    body="Your real research record is stored, but Relay Rider will not fabricate a match. Match previews should appear only after compatible participant records and the governed Match Preview Engine are connected."
                     action="Edit my commute"
                     onAction={() => setTab("commute")}
                   />
@@ -262,9 +465,9 @@ export default function PrototypePhase1() {
                 <EmptyState
                   icon={<CalendarIcon />}
                   title="Start with your commute"
-                  body="There is no participant commute signal in this session yet. Submit your own approximate commute information before reviewing the option state."
+                  body="There is no stored participant commute signal on this device yet. Complete consent and submit your own approximate commute information first."
                   action="Set up my commute"
-                  onAction={() => setTab("commute")}
+                  onAction={() => startNewDraft("need")}
                 />
               )}
             </>
@@ -274,7 +477,7 @@ export default function PrototypePhase1() {
             <>
               <section className="trust-hero">
                 <LockClosedIcon />
-                <div><small>PARTICIPANT TRUST CENTER</small><strong>Nothing is pre-verified.</strong><p>Verification, privacy, reporting, and communication should reflect real participant state. This prototype therefore begins with verification and connections unset.</p></div>
+                <div><small>PARTICIPANT TRUST CENTER</small><strong>Privacy controls precede matching.</strong><p>This beta stores a random participant reference plus the commute signal you submit. Exact home addresses, automatic payments, unrestricted participant contact, and fake verification states are not part of this build.</p></div>
               </section>
 
               <div className="section-title"><h2>Verification status</h2><span>Not connected</span></div>
@@ -288,47 +491,60 @@ export default function PrototypePhase1() {
                 ))}
               </div>
 
-              <h2 className="standalone-title trust-section-title">Privacy controls</h2>
-              <ToggleRow title="Approximate zones" detail="Use general zones instead of exact private addresses during intake and preview" enabled={approximateZones} onChange={setApproximateZones} />
-              <ToggleRow title="Masked contact details" detail="Keep phone and email hidden until a governed connection state exists" enabled={maskedContact} onChange={setMaskedContact} />
+              <h2 className="standalone-title trust-section-title">Data & privacy state</h2>
+              <div className="program-status-list">
+                <StatusRow label="Location precision" value="Approximate zones only" />
+                <StatusRow label="Participant contact" value="Masked / not connected" />
+                <StatusRow label="Participant identifier" value={submission?.participantRef ?? "Created on submission"} />
+                <StatusRow label="Consent version" value={submission?.consentVersion ?? CONSENT_VERSION} />
+              </div>
 
               <h2 className="standalone-title trust-section-title">Governed messaging</h2>
               <section className="message-card">
-                <div><span className="status-pill locked"><LockClosedIcon /> Connection unavailable</span><h3>No eligible participant connection exists.</h3><p>Messaging should not open until real eligibility, consent, program-rule, and administrative-review requirements are satisfied.</p></div>
+                <div><span className="status-pill locked"><LockClosedIcon /> Connection unavailable</span><h3>No eligible participant connection exists.</h3><p>Messaging should remain locked until identity/eligibility, consent, program rules, match review, and administrative requirements are implemented.</p></div>
               </section>
 
               <h2 className="standalone-title trust-section-title">Reliability & issue history</h2>
-              <EmptyState icon={<LockClosedIcon />} title="No participant history" body="No ratings, reliability events, issue reports, or conduct records are seeded into this prototype." />
-              <p className="form-footnote">A future controlled beta should connect reporting, blocking, suspension, escalation, and retention workflows before participant-to-participant coordination is enabled.</p>
+              <EmptyState icon={<LockClosedIcon />} title="No participant history" body="No ratings, reliability events, issue reports, or conduct records are seeded into the research beta." />
             </>
           )}
 
           {tab === "program" && (
             <>
               <section className="program-card">
-                <small>PCC-FOCUSED RESEARCH PROTOTYPE</small>
-                <h2>Participant program status</h2>
-                <p>PCC locations, Metro A Line stations, and publicly described PCC shuttle connections are used as mobility context for user testing. This screen does not imply PCC sponsorship, approval, or participant eligibility.</p>
+                <small>PCC-FOCUSED RESEARCH BETA</small>
+                <h2>My research participation</h2>
+                <p>PCC locations, Metro A Line stations, and publicly described PCC shuttle connections are used as mobility context. This does not imply PCC sponsorship, approval, or participant eligibility.</p>
               </section>
 
               <div className="program-status-list">
-                <StatusRow label="Prototype stage" value="Research prototype" />
-                <StatusRow label="Institution eligibility" value="Not verified" />
-                <StatusRow label="Participant network" value="Not connected" />
-                <StatusRow label="Program benefits" value="Not configured" />
+                <StatusRow label="Research record" value={submission ? "Submitted" : "Not submitted"} />
+                <StatusRow label="Participant reference" value={submission?.participantRef ?? "—"} />
+                <StatusRow label="Stored record status" value={submission?.status ?? "—"} />
+                <StatusRow label="Match Preview Engine" value="Not connected" />
+                <StatusRow label="Participant messaging" value="Locked" />
                 <StatusRow label="Live transportation" value="Not active" />
               </div>
 
-              <h2 className="standalone-title admin-title">What this build is ready to test</h2>
-              <section className="prototype-checklist">
-                <p>1. Whether commuters understand approximate-zone intake.</p>
-                <p>2. Whether Metro, PCC shuttle, Access Point, and corridor context are useful on the map.</p>
-                <p>3. Whether planned-route registration and privacy language are understandable before matching is connected.</p>
-              </section>
+              {submission ? (
+                <>
+                  <button className="secondary-action manage-action" onClick={() => setTab("commute")}>Edit my stored commute signal</button>
+                  {!withdrawConfirm ? (
+                    <button className="danger-action manage-action" onClick={() => { setWithdrawConfirm(true); setWithdrawError(""); }}>Withdraw my research submission</button>
+                  ) : (
+                    <section className="withdraw-card">
+                      <strong>Withdraw this submission?</strong>
+                      <p>The record will be marked withdrawn and will no longer be eligible for future match-preview processing. This does not yet represent a finalized data-retention/deletion policy.</p>
+                      <div><button className="danger-action" onClick={confirmWithdrawal}>Confirm withdrawal</button><button className="secondary-action" onClick={() => setWithdrawConfirm(false)}>Cancel</button></div>
+                      {withdrawError && <p className="form-error">{withdrawError}</p>}
+                    </section>
+                  )}
+                </>
+              ) : (
+                <EmptyState icon={<CalendarIcon />} title="No research submission" body="Submit a commute need or planned-route signal to receive a participant reference and manage the stored record from this device." action="Start intake" onAction={() => startNewDraft("need")} />
+              )}
 
-              <section className="legal-note"><LockClosedIcon /><p>Proposed contributions, Green Route Credits, participant verification, messaging, matching, and administrative decisions are not active in this clean user-test build.</p></section>
-
-              <button className="secondary-action reset-session-button" onClick={resetPrototypeSession}>Reset prototype session</button>
+              <section className="legal-note"><LockClosedIcon /><p>Proposed contributions are willingness-to-contribute signals only. Green Route Credits, participant verification, matching, messaging, administrative decisions, and transportation operation are not active in this research-beta foundation.</p></section>
             </>
           )}
         </main>
@@ -345,19 +561,7 @@ export default function PrototypePhase1() {
   );
 }
 
-function PrototypeInput({
-  id,
-  label,
-  placeholder,
-  value,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function PrototypeInput({ id, label, placeholder, value, onChange }: { id: string; label: string; placeholder: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="prototype-input-field" htmlFor={id}>
       <small>{label}</small>
@@ -366,38 +570,46 @@ function PrototypeInput({
   );
 }
 
-function ToggleRow({
-  title,
-  detail,
-  enabled,
-  onChange,
-}: {
-  title: string;
-  detail: string;
-  enabled: boolean;
-  onChange: (value: boolean) => void;
-}) {
+function PrototypeTimeInput({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <button className="toggle-row toggle-row-button" type="button" role="switch" aria-checked={enabled} onClick={() => onChange(!enabled)}>
+    <label className="prototype-input-field" htmlFor={id}>
+      <small>{label}</small>
+      <KeyboardInput id={id} type="time" value={value} onChange={(event) => onChange(event.currentTarget.value)} />
+    </label>
+  );
+}
+
+function PrototypeSelect({ id, label, value, onChange, options, placeholder }: { id: string; label: string; value: string; onChange: (value: string) => void; options: [string, string][]; placeholder?: string }) {
+  return (
+    <label className="prototype-input-field" htmlFor={id}>
+      <small>{label}</small>
+      <select id={id} value={value} onChange={(event) => onChange(event.currentTarget.value)}>
+        {placeholder && <option value="">{placeholder}</option>}
+        {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function ConsentRow({ checked, onChange, title, detail }: { checked: boolean; onChange: (value: boolean) => void; title: string; detail: string }) {
+  return (
+    <label className="consent-row">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.currentTarget.checked)} />
+      <span><strong>{title}</strong><small>{detail}</small></span>
+    </label>
+  );
+}
+
+function ChoiceToggle({ title, detail, enabled, onChange }: { title: string; detail: string; enabled: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button className="toggle-row toggle-row-button choice-toggle" type="button" role="switch" aria-checked={enabled} onClick={() => onChange(!enabled)}>
       <div><strong>{title}</strong><small>{detail}</small></div>
       <span className={`switch ${enabled ? "on" : ""}`}><i /></span>
     </button>
   );
 }
 
-function EmptyState({
-  icon,
-  title,
-  body,
-  action,
-  onAction,
-}: {
-  icon: ReactNode;
-  title: string;
-  body: string;
-  action?: string;
-  onAction?: () => void;
-}) {
+function EmptyState({ icon, title, body, action, onAction }: { icon: ReactNode; title: string; body: string; action?: string; onAction?: () => void }) {
   return (
     <section className="empty-state-card">
       <span className="empty-state-icon">{icon}</span>
@@ -410,4 +622,15 @@ function EmptyState({
 
 function StatusRow({ label, value }: { label: string; value: string }) {
   return <article className="program-status-row"><small>{label}</small><strong>{value}</strong></article>;
+}
+
+function toOptionalNumber(value: string) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatTimeRange(start: string, end: string) {
+  if (!start || !end) return "window not set";
+  return `${start}–${end}`;
 }
