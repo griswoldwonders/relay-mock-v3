@@ -133,8 +133,8 @@ export default function PrototypePhase1() {
           hydrateFromRecord(record);
           setSubmission(record);
           setAge18Plus(record.age18Plus);
-          setDataConsent(true);
-          setPrototypeAcknowledged(true);
+          setDataConsent(record.dataConsent);
+          setPrototypeAcknowledged(record.prototypeAcknowledged);
         }
         setLoadState("ready");
       })
@@ -187,6 +187,8 @@ export default function PrototypePhase1() {
       submissionType: commuteMode === "route" ? "planned_route" : "commute_need",
       consentVersion: CONSENT_VERSION,
       age18Plus,
+      dataConsent,
+      prototypeAcknowledged,
       originZone: form.originZone.trim(),
       destinationZone: form.destination.trim(),
       days: [...selectedDays],
