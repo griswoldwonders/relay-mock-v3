@@ -1,0 +1,41 @@
+name: Gridline Registry Check
+
+on:
+  push:
+    branches:
+      - feature/saas-foundation-gridline
+    paths:
+      - .github/workflows/gridline-registry-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch requested Watermelon registry block
+        run: |
+          curl --fail --location --silent --show-error \
+            https://registry.watermelon.sh/r/gridline-dashboard.json \
+            --output gridline-dashboard.json
+      - name: Summarize registry item
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const item = JSON.parse(fs.readFileSync('gridline-dashboard.json','utf8'));
+          console.log(JSON.stringify({
+            name: item.name,
+            type: item.type,
+            dependencies: item.dependencies || [],
+            registryDependencies: item.registryDependencies || [],
+            files: (item.files || []).map((f) => ({ path: f.path, type: f.type, target: f.target }))
+          }, null, 2));
+          NODE
+      - name: Upload registry JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: gridline-dashboard-registry
+          path: gridline-dashboard.json
+          retention-days: 1
