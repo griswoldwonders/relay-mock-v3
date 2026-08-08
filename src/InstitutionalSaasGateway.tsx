@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import InstitutionalWorkspace from "./InstitutionalWorkspace";
+import OperationalEngine from "./OperationalEngine";
+import { acceptInvitation } from "./operationalApi";
 import {
   createCohort,
   createDataSource,
@@ -33,12 +35,13 @@ import {
 } from "./saasApi";
 import "./saas-foundation.css";
 
-type FoundationView = "overview" | "sites" | "cohorts" | "programs" | "participants" | "sources" | "audit";
+type FoundationView = "overview" | "operations" | "sites" | "cohorts" | "programs" | "participants" | "sources" | "audit";
 
 type Props = { onOpenMap: () => void; onOpenParticipant: () => void };
 
 const FOUNDATION_NAV: { id: FoundationView; label: string }[] = [
   { id: "overview", label: "SaaS Overview" },
+  { id: "operations", label: "Operations" },
   { id: "sites", label: "Sites" },
   { id: "cohorts", label: "Cohorts" },
   { id: "programs", label: "Programs" },
@@ -50,6 +53,7 @@ const FOUNDATION_NAV: { id: FoundationView; label: string }[] = [
 export default function InstitutionalSaasGateway({ onOpenMap, onOpenParticipant }: Props) {
   const [session, setSession] = useState<SaasSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [processingInvite, setProcessingInvite] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -91,7 +95,31 @@ export default function InstitutionalSaasGateway({ onOpenMap, onOpenParticipant 
 
   useEffect(() => {
     if (!session) return;
-    loadOrganizations(session).catch((reason) => setError(messageOf(reason)));
+    let active = true;
+    (async () => {
+      const inviteToken = new URLSearchParams(window.location.search).get("invite");
+      if (inviteToken) setProcessingInvite(true);
+      try {
+        if (inviteToken) {
+          const acceptedOrgId = await acceptInvitation(session, inviteToken);
+          if (!active) return;
+          setOrganizationId(acceptedOrgId);
+          setAuthNotice("Institution invitation accepted. Your organization membership and any default assignments are now active.");
+          const url = new URL(window.location.href);
+          url.searchParams.delete("invite");
+          window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+        }
+        await loadOrganizations(session);
+      } catch (reason) {
+        if (active) {
+          setError(messageOf(reason));
+          await loadOrganizations(session).catch(() => undefined);
+        }
+      } finally {
+        if (active) setProcessingInvite(false);
+      }
+    })();
+    return () => { active = false; };
   }, [session]);
 
   useEffect(() => {
@@ -120,7 +148,7 @@ export default function InstitutionalSaasGateway({ onOpenMap, onOpenParticipant 
       else {
         const result = await signUp(email.trim(), password);
         if (result.session) setSession(result.session);
-        else setAuthNotice("Account created. Check your email if confirmation is required, then sign in.");
+        else setAuthNotice("Account created. Check your email if confirmation is required, then sign in with this invitation link still open.");
       }
     } catch (reason) { setError(messageOf(reason)); }
   }
@@ -143,14 +171,14 @@ export default function InstitutionalSaasGateway({ onOpenMap, onOpenParticipant 
     await loadFoundation(session, organization.id);
   }
 
-  if (loading) return <div className="saas-auth-shell"><div className="saas-auth-card"><strong>Relay Rider</strong><p>Loading institutional workspace…</p></div></div>;
+  if (loading || processingInvite) return <div className="saas-auth-shell"><div className="saas-auth-card"><strong>Relay Rider</strong><p>{processingInvite ? "Accepting institution invitation…" : "Loading institutional workspace…"}</p></div></div>;
 
   if (!session) {
     return <div className="saas-auth-shell"><section className="saas-auth-card"><span className="saas-kicker">INSTITUTIONAL TDM SAAS</span><h1>Run mobility programs from one governed workspace.</h1><p>Sign in to manage organizations, sites, cohorts, programs, participant operations, data sources, and TDM intelligence.</p><label>Email<input value={email} type="email" autoComplete="email" onChange={(event) => setEmail(event.currentTarget.value)} /></label><label>Password<input value={password} type="password" minLength={8} autoComplete={authMode === "signin" ? "current-password" : "new-password"} onChange={(event) => setPassword(event.currentTarget.value)} /></label>{error && <div className="saas-error">{error}</div>}{authNotice && <div className="saas-notice">{authNotice}</div>}<button className="saas-primary" disabled={!email.trim() || password.length < 8} onClick={handleAuth}>{authMode === "signin" ? "Sign in" : "Create account"}</button><button className="saas-link" onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setError(""); }}>{authMode === "signin" ? "Need an administrator account? Create one" : "Already have an account? Sign in"}</button><small>Authentication is provided by the connected Supabase project. Access to institutional records is enforced with row-level security.</small></section></div>;
   }
 
   if (!organizations.length) {
-    return <div className="saas-auth-shell"><section className="saas-auth-card"><span className="saas-kicker">ORGANIZATION ONBOARDING</span><h1>Create your institutional workspace</h1><p>This creates a real tenant record and makes your authenticated account the Organization Owner.</p><label>Organization name<input value={orgName} onChange={(event) => setOrgName(event.currentTarget.value)} placeholder="Example institution" /></label><label>Organization type<select value={orgType} onChange={(event) => setOrgType(event.currentTarget.value)}><option value="employer">Employer</option><option value="campus">Campus / college</option><option value="hospital">Hospital / medical center</option><option value="business_district">Business district</option><option value="venue">Venue</option><option value="municipality">Municipality</option><option value="other">Other institution</option></select></label>{error && <div className="saas-error">{error}</div>}<button className="saas-primary" disabled={!orgName.trim()} onClick={handleCreateOrganization}>Create organization</button><button className="saas-link" onClick={async () => { await signOut(session); setSession(null); }}>Sign out</button></section></div>;
+    return <div className="saas-auth-shell"><section className="saas-auth-card"><span className="saas-kicker">ORGANIZATION ONBOARDING</span><h1>Create your institutional workspace</h1><p>This creates a real tenant record and makes your authenticated account the Organization Owner.</p>{error && <div className="saas-error">{error}</div>}{authNotice && <div className="saas-notice">{authNotice}</div>}<label>Organization name<input value={orgName} onChange={(event) => setOrgName(event.currentTarget.value)} placeholder="Example institution" /></label><label>Organization type<select value={orgType} onChange={(event) => setOrgType(event.currentTarget.value)}><option value="employer">Employer</option><option value="campus">Campus / college</option><option value="hospital">Hospital / medical center</option><option value="business_district">Business district</option><option value="venue">Venue</option><option value="municipality">Municipality</option><option value="other">Other institution</option></select></label><button className="saas-primary" disabled={!orgName.trim()} onClick={handleCreateOrganization}>Create organization</button><button className="saas-link" onClick={async () => { await signOut(session); setSession(null); }}>Sign out</button></section></div>;
   }
 
   if (workspaceOpen) {
@@ -162,7 +190,9 @@ export default function InstitutionalSaasGateway({ onOpenMap, onOpenParticipant 
     <nav className="saas-foundation-nav">{FOUNDATION_NAV.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}>{item.label}</button>)}</nav>
     <main className="saas-foundation-content">
       {error && <div className="saas-error wide">{error}</div>}
+      {authNotice && <div className="saas-notice">{authNotice}</div>}
       {view === "overview" && <FoundationOverview onboarding={onboarding} sites={sites} cohorts={cohorts} programs={programs} sources={sources} participants={participants} audit={audit} onParticipantPath={async () => { try { await refresh({ participant_path_configured: true }); } catch (reason) { setError(messageOf(reason)); } }} />}
+      {view === "operations" && session && organization && <OperationalEngine session={session} organization={organization} role={membership?.role ?? "participant"} sites={sites} cohorts={cohorts} programs={programs} sources={sources} onChanged={() => loadFoundation(session, organization.id)} />}
       {view === "sites" && <CrudPanel title="Sites" description="Public institutional destinations and operating locations. Participant homes never belong in this table." form={<><input value={siteName} onChange={(e) => setSiteName(e.currentTarget.value)} placeholder="Site name" /><select value={siteType} onChange={(e) => setSiteType(e.currentTarget.value)}><option value="employer">Employer</option><option value="campus">Campus</option><option value="hospital">Hospital</option><option value="venue">Venue</option><option value="municipal">Municipal</option><option value="other">Other</option></select><input value={siteZone} onChange={(e) => setSiteZone(e.currentTarget.value)} placeholder="General zone / city" /><input value={parkingCapacity} onChange={(e) => setParkingCapacity(e.currentTarget.value)} inputMode="numeric" placeholder="Parking capacity (optional)" /><button onClick={async () => { if (!session || !organization || !siteName.trim()) return; try { await createSite(session, organization.id, { name: siteName.trim(), site_type: siteType, general_zone: siteZone.trim() || undefined, parking_capacity: parkingCapacity ? Number(parkingCapacity) : null }); setSiteName(""); setSiteZone(""); setParkingCapacity(""); await refresh({ site_configured: true }); } catch (reason) { setError(messageOf(reason)); } }}>Add site</button></>} items={sites.map((item) => ({ title: item.name, meta: `${item.site_type} · ${item.general_zone ?? "zone not set"}`, detail: item.parking_capacity == null ? "Parking capacity not configured" : `${item.parking_capacity} parking spaces configured` }))} />}
       {view === "cohorts" && <CrudPanel title="Cohorts" description="Institution-defined participant groups used for eligibility, reporting, and program rules." form={<><input value={cohortName} onChange={(e) => setCohortName(e.currentTarget.value)} placeholder="Cohort name" /><input value={cohortDescription} onChange={(e) => setCohortDescription(e.currentTarget.value)} placeholder="Description" /><select value={cohortSite} onChange={(e) => setCohortSite(e.currentTarget.value)}><option value="">Organization-wide</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select><button onClick={async () => { if (!session || !organization || !cohortName.trim()) return; try { await createCohort(session, organization.id, { name: cohortName.trim(), description: cohortDescription.trim(), site_id: cohortSite || null }); setCohortName(""); setCohortDescription(""); await refresh({ cohort_configured: true }); } catch (reason) { setError(messageOf(reason)); } }}>Add cohort</button></>} items={cohorts.map((item) => ({ title: item.name, meta: item.site_id ? sites.find((site) => site.id === item.site_id)?.name ?? "Site-scoped" : "Organization-wide", detail: item.description ?? "No description" }))} />}
       {view === "programs" && <CrudPanel title="TDM Programs" description="Persistent institution-governed interventions. Creating a program does not activate transportation or guarantee outcomes." form={<><input value={programName} onChange={(e) => setProgramName(e.currentTarget.value)} placeholder="Program name" /><select value={programType} onChange={(e) => setProgramType(e.currentTarget.value)}><option value="multimodal">Multimodal</option><option value="transit">Transit</option><option value="planned_route">Planned-route coordination</option><option value="parking">Parking</option><option value="access_point">Access Point</option><option value="ev_charging">EV / charging</option><option value="flexible_work">Flexible work</option><option value="engagement">Engagement</option></select><input value={programObjective} onChange={(e) => setProgramObjective(e.currentTarget.value)} placeholder="Program objective" /><button onClick={async () => { if (!session || !organization || !programName.trim()) return; try { await createProgram(session, organization.id, { name: programName.trim(), program_type: programType, objective: programObjective.trim() }); setProgramName(""); setProgramObjective(""); await refresh({ program_configured: true }); } catch (reason) { setError(messageOf(reason)); } }}>Create draft program</button></>} items={programs.map((item) => ({ title: item.name, meta: `${item.program_type.replaceAll("_", " ")} · ${item.status}`, detail: item.objective ?? "No objective recorded" }))} />}
