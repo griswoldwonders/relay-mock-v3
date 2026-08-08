@@ -4,7 +4,8 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?
 const TOKEN_KEY = "relay-rider-research-participant-token";
 const SUBMISSION_ID_KEY = "relay-rider-research-submission-id";
 
-export const CONSENT_VERSION = "research-beta-v1-2026-08-07";
+export const CONSENT_VERSION = "research-beta-v2-2026-08-07";
+export const RESEARCH_RETENTION_DAYS = 90;
 
 export type ResearchSubmissionPayload = {
   submissionType: "commute_need" | "planned_route";
@@ -42,6 +43,7 @@ export type ResearchSubmissionRecord = ResearchSubmissionPayload & {
   createdAt: string;
   updatedAt: string;
   withdrawnAt: string | null;
+  retentionExpiresAt: string;
 };
 
 type RpcErrorShape = {
