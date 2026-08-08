@@ -10,6 +10,8 @@ export type ResearchSubmissionPayload = {
   submissionType: "commute_need" | "planned_route";
   consentVersion: string;
   age18Plus: boolean;
+  dataConsent: boolean;
+  prototypeAcknowledged: boolean;
   originZone: string;
   destinationZone: string;
   days: string[];
