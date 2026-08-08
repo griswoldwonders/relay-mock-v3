@@ -1,0 +1,172 @@
+/* Regular responsive web-app shell.
+   This intentionally overrides the prototype device simulator without modifying
+   the protected mobile runtime implementation. */
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  min-height: 100%;
+}
+
+body {
+  overflow: hidden;
+  background: #f5f6f8;
+}
+
+.phone-stage {
+  position: fixed !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  padding: 0 !important;
+}
+
+.phone-scale-box,
+.phone-device {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+}
+
+.phone-device {
+  left: 0 !important;
+  top: 0 !important;
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+}
+
+.phone-bezel,
+.device-camera,
+.device-menu-bar,
+.mobile-cursor,
+.status-bar,
+.home-indicator,
+.keyboard-dock {
+  display: none !important;
+}
+
+.device-screen {
+  position: absolute !important;
+  inset: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  cursor: auto !important;
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+}
+
+.device-screen,
+.device-screen *,
+.device-screen:active,
+.device-screen:active *,
+.device-screen input,
+.device-screen textarea,
+.device-screen button,
+.device-screen a,
+.device-screen [role="button"] {
+  cursor: auto !important;
+}
+
+.device-screen button,
+.device-screen a,
+.device-screen [role="button"] {
+  cursor: pointer !important;
+}
+
+.mobile-app-viewport,
+.mobile-app-viewport[data-platform="android"][data-keyboard-visible="false"] {
+  position: absolute !important;
+  inset: 0 !important;
+  bottom: 0 !important;
+}
+
+.flow-stack,
+.mobile-page {
+  --keyboard-height: 0px !important;
+  --mobile-safe-area-height: 0px !important;
+}
+
+.mobile-scroll {
+  bottom: 0 !important;
+  touch-action: pan-y !important;
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+}
+
+.mobile-scrollbar {
+  bottom: 4px !important;
+}
+
+.relay-prototype-root,
+.phase1-shell,
+.relay-shell {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  border-radius: 0 !important;
+}
+
+.relay-content {
+  width: min(100%, 960px);
+  margin: 0 auto;
+  padding: 32px clamp(18px, 4vw, 48px) 124px;
+}
+
+.bottom-nav {
+  position: fixed !important;
+  right: auto !important;
+  bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  left: 50% !important;
+  width: min(calc(100% - 24px), 760px) !important;
+  transform: translateX(-50%);
+}
+
+.relay-map-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  border-radius: 0 !important;
+}
+
+@media (min-width: 760px) {
+  .relay-content {
+    padding-top: 42px;
+    padding-bottom: 132px;
+  }
+
+  .hero-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .phase1-shell .paired-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .relay-content {
+    width: 100%;
+    padding: 22px 16px 116px;
+  }
+
+  .bottom-nav {
+    width: calc(100% - 20px) !important;
+  }
+}
