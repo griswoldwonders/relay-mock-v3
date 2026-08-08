@@ -1,4 +1,5 @@
 @import "./prototype.css";
+@import "./web-shell.css";
 
 .phase1-shell .green-tile { background: #e8f6ee; color: #24754a; }
 
