@@ -7,7 +7,9 @@
 .phase1-shell .empty-state-card,
 .phase1-shell .session-summary-card,
 .phase1-shell .prototype-checklist,
-.phase1-shell .prototype-privacy-summary {
+.phase1-shell .prototype-privacy-summary,
+.phase1-shell .consent-card,
+.phase1-shell .withdraw-card {
   border-radius: 22px;
   background: #ffffff;
   box-shadow: 0 10px 30px rgba(32, 37, 47, 0.07);
@@ -26,6 +28,28 @@
 .phase1-shell .trust-hero p,
 .phase1-shell .message-card p { margin: 0; color: #626a76; font-size: 11px; line-height: 1.5; }
 
+.phase1-shell .consent-card {
+  padding: 18px;
+  margin-bottom: 12px;
+  border: 1px solid #e4e1f7;
+  background: linear-gradient(145deg, #f7f5ff, #ffffff 70%);
+}
+.phase1-shell .consent-card > small { color: #6357b3; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.phase1-shell .consent-card h2 { margin: 5px 0 6px; font-size: 16px; }
+.phase1-shell .consent-card > p { margin: 0 0 12px; color: #636b77; font-size: 10px; line-height: 1.5; }
+.phase1-shell .consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid #ebe9f2;
+}
+.phase1-shell .consent-row input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: #6555d8; flex: 0 0 auto; }
+.phase1-shell .consent-row span { flex: 1; }
+.phase1-shell .consent-row strong { display: block; font-size: 11px; }
+.phase1-shell .consent-row small { display: block; margin-top: 3px; color: #747b87; font-size: 9px; line-height: 1.4; }
+.phase1-shell .consent-footnote { padding-top: 8px; border-top: 1px solid #ebe9f2; color: #777e8a !important; font-size: 9px !important; }
+
 .phase1-shell .prototype-input-field {
   display: block;
   padding: 11px;
@@ -39,7 +63,8 @@
   color: #777e8a;
   font-size: 10px;
 }
-.phase1-shell .prototype-input-field input {
+.phase1-shell .prototype-input-field input,
+.phase1-shell .prototype-input-field select {
   width: 100%;
   min-height: 38px;
   padding: 9px 10px;
@@ -48,10 +73,15 @@
   outline: none;
   background: #ffffff;
   color: #2a303a;
+  font: inherit;
   font-size: 12px;
 }
 .phase1-shell .prototype-input-field input::placeholder { color: #a2a7b0; }
-.phase1-shell .prototype-input-field input:focus { border-color: #6555d8; box-shadow: 0 0 0 2px rgba(101, 85, 216, 0.1); }
+.phase1-shell .prototype-input-field input:focus,
+.phase1-shell .prototype-input-field select:focus { border-color: #6555d8; box-shadow: 0 0 0 2px rgba(101, 85, 216, 0.1); }
+.phase1-shell .paired-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.phase1-shell .paired-fields .prototype-input-field { min-width: 0; }
+.phase1-shell .field-helper { margin: -2px 6px 10px; color: #7b738f; font-size: 9px; line-height: 1.4; }
 
 .phase1-shell .prototype-privacy-summary {
   display: flex;
@@ -67,6 +97,16 @@
 .phase1-shell .prototype-privacy-summary > svg { flex: 0 0 auto; margin-top: 1px; }
 .phase1-shell .prototype-privacy-summary strong { display: block; font-size: 11px; }
 .phase1-shell .prototype-privacy-summary p { margin: 3px 0 0; font-size: 9px; line-height: 1.4; }
+
+.phase1-shell .research-notice {
+  padding: 11px 13px;
+  margin-bottom: 12px;
+  border-radius: 15px;
+  background: #e9f7ef;
+  color: #2d6547;
+}
+.phase1-shell .research-notice p { margin: 0; font-size: 10px; line-height: 1.45; }
+.phase1-shell .form-error { margin: 9px 3px 0; color: #a34d41; font-size: 10px; line-height: 1.4; }
 
 .phase1-shell .primary-action:disabled {
   cursor: default;
@@ -105,6 +145,7 @@
   color: inherit;
   text-align: left;
 }
+.phase1-shell .choice-toggle { border: 1px solid #ebecef; box-shadow: none; }
 .phase1-shell .switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; border-radius: 99px; background: #d8dce2; }
 .phase1-shell .switch i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 2px 6px rgba(0,0,0,.15); transition: left .16s ease; }
 .phase1-shell .switch.on { background: #6555d8; }
@@ -156,7 +197,7 @@
   box-shadow: 0 7px 22px rgba(32, 37, 47, 0.05);
 }
 .phase1-shell .program-status-row small { color: #777e8a; font-size: 9px; }
-.phase1-shell .program-status-row strong { text-align: right; font-size: 11px; }
+.phase1-shell .program-status-row strong { max-width: 58%; text-align: right; font-size: 11px; overflow-wrap: anywhere; }
 
 .phase1-shell .prototype-checklist {
   padding: 16px;
@@ -164,10 +205,27 @@
 }
 .phase1-shell .prototype-checklist p { margin: 0 0 9px; color: #5f6773; font-size: 11px; line-height: 1.45; }
 .phase1-shell .prototype-checklist p:last-child { margin-bottom: 0; }
-.phase1-shell .reset-session-button { margin-top: 12px; }
+.phase1-shell .manage-action { width: 100%; margin-top: 11px; }
+.phase1-shell .danger-action {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 13px;
+  padding: 10px 13px;
+  background: #fff0ec;
+  color: #a14e3c;
+  font-size: 11px;
+  font-weight: 800;
+}
+.phase1-shell .withdraw-card { padding: 16px; margin-top: 12px; border: 1px solid #efd5ce; background: #fffaf8; }
+.phase1-shell .withdraw-card > strong { display: block; font-size: 13px; }
+.phase1-shell .withdraw-card > p { margin: 6px 0 12px; color: #716a69; font-size: 10px; line-height: 1.45; }
+.phase1-shell .withdraw-card > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.phase1-shell .withdraw-card .secondary-action { width: 100%; }
 
 @media (max-width: 390px) {
   .phase1-shell .status-pill { border-radius: 12px; }
   .phase1-shell .session-summary-card p { padding-right: 0; margin-top: 4px; }
   .phase1-shell .session-summary-card > span { position: static; display: inline-block; margin-top: 9px; }
+  .phase1-shell .paired-fields { grid-template-columns: 1fr; gap: 0; }
 }
