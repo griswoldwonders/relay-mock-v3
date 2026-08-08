@@ -1,6 +1,4 @@
-/* Regular responsive web-app shell.
-   This intentionally overrides the prototype device simulator without modifying
-   the protected mobile runtime implementation. */
+/* Browser-native Relay Rider shell. No device simulator chrome is rendered. */
 
 html,
 body,
@@ -9,6 +7,7 @@ body,
   min-width: 320px;
   height: 100%;
   min-height: 100%;
+  margin: 0;
 }
 
 body {
@@ -16,80 +15,13 @@ body {
   background: #f5f6f8;
 }
 
-.phone-stage {
-  position: fixed !important;
-  inset: 0 !important;
-  display: block !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  min-height: 100vh !important;
-  padding: 0 !important;
-}
-
-.phone-scale-box,
-.phone-device {
-  position: relative !important;
-  inset: auto !important;
-  width: 100% !important;
-  height: 100% !important;
-  transform: none !important;
-}
-
-.phone-device {
-  left: 0 !important;
-  top: 0 !important;
-  -webkit-user-select: auto !important;
-  user-select: auto !important;
-}
-
-.phone-bezel,
-.device-camera,
-.device-menu-bar,
-.mobile-cursor,
-.status-bar,
-.home-indicator,
-.keyboard-dock {
-  display: none !important;
-}
-
-.device-screen {
-  position: absolute !important;
-  inset: 0 !important;
-  left: 0 !important;
-  top: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 0 !important;
-  background: #ffffff !important;
-  box-shadow: none !important;
-  cursor: auto !important;
-  -webkit-user-select: auto !important;
-  user-select: auto !important;
-}
-
-.device-screen,
-.device-screen *,
-.device-screen:active,
-.device-screen:active *,
-.device-screen input,
-.device-screen textarea,
-.device-screen button,
-.device-screen a,
-.device-screen [role="button"] {
-  cursor: auto !important;
-}
-
-.device-screen button,
-.device-screen a,
-.device-screen [role="button"] {
-  cursor: pointer !important;
-}
-
-.mobile-app-viewport,
-.mobile-app-viewport[data-platform="android"][data-keyboard-visible="false"] {
-  position: absolute !important;
-  inset: 0 !important;
-  bottom: 0 !important;
+.web-runtime {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #f5f6f8;
 }
 
 .flow-stack,
@@ -119,9 +51,9 @@ body {
 }
 
 .relay-content {
-  width: min(100%, 960px);
+  width: min(100%, 1180px);
   margin: 0 auto;
-  padding: 32px clamp(18px, 4vw, 48px) 124px;
+  padding: 32px clamp(18px, 4vw, 56px) 124px;
 }
 
 .bottom-nav {
@@ -143,8 +75,8 @@ body {
 
 @media (min-width: 760px) {
   .relay-content {
-    padding-top: 42px;
-    padding-bottom: 132px;
+    padding-top: 104px;
+    padding-bottom: 56px;
   }
 
   .hero-actions {
@@ -158,9 +90,66 @@ body {
   .phase1-shell .paired-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .bottom-nav {
+    top: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    left: 0 !important;
+    width: 100% !important;
+    min-height: 68px;
+    padding: 10px clamp(20px, 4vw, 56px);
+    transform: none !important;
+    grid-template-columns: minmax(180px, 1fr) repeat(5, minmax(88px, auto)) minmax(0, 1fr);
+    align-items: center;
+    gap: 4px;
+    border: 0;
+    border-bottom: 1px solid rgba(218, 221, 228, 0.96);
+    border-radius: 0;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 6px 24px rgba(26, 31, 41, 0.07);
+    backdrop-filter: blur(18px);
+  }
+
+  .bottom-nav::before {
+    content: "Relay Rider";
+    color: #252b36;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .bottom-nav button {
+    min-height: 44px;
+    padding: 0 12px;
+    flex-direction: row;
+    gap: 7px;
+    border-radius: 11px;
+  }
+
+  .bottom-nav svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .bottom-nav span {
+    font-size: 13px;
+  }
+
+  .relay-prototype-root .bottom-nav button:nth-child(4)::before {
+    font-size: 17px !important;
+    line-height: 17px !important;
+  }
+
+  .relay-prototype-root .bottom-nav button:nth-child(4) span::after {
+    position: static !important;
+    inset: auto !important;
+    color: currentColor !important;
+    font-size: 13px !important;
+  }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 759px) {
   .relay-content {
     width: 100%;
     padding: 22px 16px 116px;
