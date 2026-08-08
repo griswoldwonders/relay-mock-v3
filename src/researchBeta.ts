@@ -32,12 +32,6 @@ export type ResearchSubmissionPayload = {
   capacity: number | null;
   maxDetourMinutes: number | null;
   plannedRouteNote: string;
-  institutionContext?: string;
-  cohortContext?: string;
-  privacyPreference?: string;
-  verificationWilling?: boolean;
-  accessibilityCapability?: string;
-  contributionReviewRange?: string;
   approximateZones: boolean;
   maskedContact: boolean;
 };
