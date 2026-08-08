@@ -1,154 +1,118 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   BarChartIcon,
   CalendarIcon,
-  CheckCircledIcon,
   ChevronRightIcon,
   DashboardIcon,
   ExclamationTriangleIcon,
-  GlobeIcon,
-  LightningBoltIcon,
   LockClosedIcon,
   PersonIcon,
   SewingPinIcon,
 } from "@radix-ui/react-icons";
-import { MobileScroll } from "./mobile";
+import { KeyboardInput, MobileScroll, useKeyboard } from "./mobile";
 import "./phase1.css";
 
 type Tab = "home" | "commute" | "options" | "trust" | "program";
 type CommuteMode = "need" | "route";
-type ReviewStatus = "Preview available" | "Administrative review" | "Eligible to connect";
 
-type Segment = {
-  mode: "Walk" | "Planned route" | "Transit" | "Bike / micromobility";
-  time: string;
-  detail: string;
+type CommuteForm = {
+  originZone: string;
+  destination: string;
+  morningWindow: string;
+  flexibility: string;
+  accessPointPreference: string;
+  transitPreference: string;
+  evPreference: string;
+  accessibilityNeeds: string;
+  parkingDifficulty: string;
+  capacity: string;
+  maxDetour: string;
+  plannedRouteNote: string;
 };
 
-type CommuterOption = {
-  id: string;
-  label: string;
-  route: string;
-  window: string;
-  accessPoint: string;
-  compatibility: number;
-  routeFit: number;
-  scheduleFit: number;
-  multimodalFit: number;
-  trustReadiness: string;
-  detour: string;
-  vehicle: string;
-  review: ReviewStatus;
-  incentive: string;
-  contribution: string;
-  totalTime: string;
-  segments: Segment[];
-  reasons: string[];
+type PrototypeSubmission = {
+  mode: CommuteMode;
+  days: string[];
+  form: CommuteForm;
 };
 
-const OPTIONS: CommuterOption[] = [
-  {
-    id: "option-01",
-    label: "Option 01",
-    route: "Glendale → PCC via Memorial Park",
-    window: "Arrive 8:08–8:24 AM",
-    accessPoint: "Glendale Transportation Center",
-    compatibility: 94,
-    routeFit: 91,
-    scheduleFit: 96,
-    multimodalFit: 89,
-    trustReadiness: "Verification review complete for demo",
-    detour: "Estimated 4–6 min",
-    vehicle: "EV · demonstration verification badge",
-    review: "Administrative review",
-    incentive: "Potential 4-point Green Route Credit",
-    contribution: "Proposed contribution compatible · no purchase created",
-    totalTime: "43–49 min estimated",
-    segments: [
-      { mode: "Walk", time: "7:22 AM", detail: "6 min to Glendale Transportation Center Access Point" },
-      { mode: "Planned route", time: "7:30 AM", detail: "Compatible existing route to Memorial Park" },
-      { mode: "Transit", time: "7:52 AM", detail: "Metro A Line connection toward Allen" },
-      { mode: "Walk", time: "8:08 AM", detail: "Final 5 min to campus edge" },
-    ],
-    reasons: [
-      "Recurring Tuesday and Thursday schedule overlaps within the selected flexibility window.",
-      "The planned route shares most of the requested corridor and remains within the stated detour limit.",
-      "The selected Access Point connects cleanly to the A Line and avoids exact-home location disclosure.",
-      "Both demonstration profiles are in the PCC cohort and meet the current program-rule preview criteria.",
-    ],
-  },
-  {
-    id: "option-02",
-    label: "Option 02",
-    route: "Eagle Rock → PCC with Access Point transfer",
-    window: "Arrive 8:16–8:34 AM",
-    accessPoint: "Eagle Rock Plaza public edge",
-    compatibility: 87,
-    routeFit: 84,
-    scheduleFit: 90,
-    multimodalFit: 82,
-    trustReadiness: "One verification item pending",
-    detour: "Estimated 7–9 min",
-    vehicle: "Hybrid · demonstration profile",
-    review: "Preview available",
-    incentive: "No incentive modeled yet",
-    contribution: "Contribution gap estimated · administrator may review support",
-    totalTime: "48–56 min estimated",
-    segments: [
-      { mode: "Walk", time: "7:20 AM", detail: "8 min to Eagle Rock Plaza Access Point" },
-      { mode: "Planned route", time: "7:30 AM", detail: "Existing route toward Old Pasadena" },
-      { mode: "Transit", time: "8:00 AM", detail: "A Line connection from Memorial Park" },
-      { mode: "Walk", time: "8:16 AM", detail: "Campus-edge walk" },
-    ],
-    reasons: [
-      "Origin zones are within the same institution-defined corridor.",
-      "One recurring day fits the requested return schedule.",
-      "Access Point preference is shared, but the detour is near the participant maximum.",
-      "The preview remains available while an administrator reviews the pending verification item.",
-    ],
-  },
-];
+const EMPTY_FORM: CommuteForm = {
+  originZone: "",
+  destination: "",
+  morningWindow: "",
+  flexibility: "",
+  accessPointPreference: "",
+  transitPreference: "",
+  evPreference: "",
+  accessibilityNeeds: "",
+  parkingDifficulty: "",
+  capacity: "",
+  maxDetour: "",
+  plannedRouteNote: "",
+};
 
-const VERIFICATION = [
-  { label: "Identity", status: "Verified for demonstration", tone: "good" },
-  { label: "Institution eligibility", status: "PCC cohort confirmed", tone: "good" },
-  { label: "Phone & email", status: "Verified for demonstration", tone: "good" },
-  { label: "Vehicle / route documents", status: "Not required for commuter profile", tone: "neutral" },
-  { label: "Privacy settings", status: "Approximate zones enabled", tone: "good" },
-];
-
-const REVIEW_QUEUE = [
-  { id: "RR-1042", type: "Commuter option", subject: "Glendale → PCC", reason: "Contribution + incentive eligibility", risk: "Standard", status: "Pending" },
-  { id: "RR-1038", type: "Verification", subject: "Planned-route participant", reason: "Vehicle document review", risk: "Standard", status: "Needs info" },
-  { id: "RR-1034", type: "Access Point", subject: "Eagle Rock Plaza edge", reason: "Visibility + site suitability review", risk: "Elevated", status: "Pending" },
-  { id: "RR-1029", type: "Accessibility", subject: "PCC morning cohort", reason: "Step-free path request", risk: "Priority", status: "Admin review" },
-];
-
-const BENEFITS = [
-  { title: "Green Route Credit", value: "4 points modeled", rule: "Eligible corridor + admin approval + funded pool" },
-  { title: "Preferred Parking", value: "Potential eligibility", rule: "Institution program rule required" },
-  { title: "Transit Connection Benefit", value: "Scenario only", rule: "Sponsor funding and participant eligibility required" },
+const VERIFICATION_ITEMS = [
+  { label: "Identity", status: "Not connected in this prototype" },
+  { label: "Institution eligibility", status: "Not verified" },
+  { label: "Phone & email", status: "Not verified" },
+  { label: "Vehicle / route documents", status: "Nothing submitted" },
 ];
 
 export default function PrototypePhase1() {
+  const keyboard = useKeyboard();
   const [tab, setTab] = useState<Tab>("home");
   const [commuteMode, setCommuteMode] = useState<CommuteMode>("need");
-  const [selectedDays, setSelectedDays] = useState(["Tue", "Thu"]);
-  const [selectedOption, setSelectedOption] = useState(OPTIONS[0]);
-  const [interestSent, setInterestSent] = useState(false);
-  const [messageState, setMessageState] = useState<"locked" | "requested">("locked");
-  const [reported, setReported] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [form, setForm] = useState<CommuteForm>(EMPTY_FORM);
+  const [submission, setSubmission] = useState<PrototypeSubmission | null>(null);
+  const [approximateZones, setApproximateZones] = useState(true);
+  const [maskedContact, setMaskedContact] = useState(true);
 
   const title = useMemo(() => ({
     home: "Relay Rider",
     commute: "My Commute",
     options: "Commuter Options",
     trust: "Trust Center",
-    program: "Program Console",
+    program: "My Program",
   })[tab], [tab]);
 
+  const canSubmit = Boolean(
+    form.originZone.trim() &&
+    form.destination.trim() &&
+    form.morningWindow.trim() &&
+    selectedDays.length > 0,
+  );
+
   function toggleDay(day: string) {
-    setSelectedDays((current) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day]);
+    setSelectedDays((current) => current.includes(day)
+      ? current.filter((item) => item !== day)
+      : [...current, day]);
+  }
+
+  function updateField(key: keyof CommuteForm, value: string) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function submitCommute() {
+    if (!canSubmit) return;
+    keyboard.hide();
+    setSubmission({
+      mode: commuteMode,
+      days: [...selectedDays],
+      form: { ...form },
+    });
+    setTab("options");
+  }
+
+  function resetPrototypeSession() {
+    keyboard.hide();
+    setCommuteMode("need");
+    setSelectedDays([]);
+    setForm(EMPTY_FORM);
+    setSubmission(null);
+    setApproximateZones(true);
+    setMaskedContact(true);
+    setTab("home");
   }
 
   return (
@@ -157,7 +121,7 @@ export default function PrototypePhase1() {
         <main className="relay-content">
           <header className="page-heading">
             <div>
-              <span className="kicker">PCC CONTROLLED BETA · PRODUCT PROTOTYPE</span>
+              <span className="kicker">PCC-FOCUSED RESEARCH PROTOTYPE</span>
               <h1>{title}</h1>
             </div>
             <button className="profile-button" aria-label="Open Trust Center" onClick={() => setTab("trust")}><PersonIcon /></button>
@@ -166,53 +130,48 @@ export default function PrototypePhase1() {
           <section className="beta-notice">
             <LockClosedIcon />
             <div>
-              <strong>Closed, institution-sponsored demonstration</strong>
-              <p>Transportation is not guaranteed. Commuter options, verification states, benefits, messaging, and reviews shown here are prototype workflows subject to program rules and administrative review.</p>
+              <strong>User-testing environment</strong>
+              <p>This prototype does not provide live transportation, confirmed commuter matches, payments, guaranteed incentives, or verified participant connections. Information entered here remains in this browser session only.</p>
             </div>
           </section>
 
           {tab === "home" && (
             <>
               <section className="hero-card">
-                <small>GOVERNED COMMUTER PROGRAM</small>
-                <h2>Coordinate planned commutes with more confidence.</h2>
-                <p>Relay Rider combines corridor intelligence, explainable commuter-option previews, designated Access Points, trust controls, multimodal connections, and institution-funded benefit scenarios.</p>
+                <small>COMMUTER COORDINATION PROTOTYPE</small>
+                <h2>Start with your actual commute pattern.</h2>
+                <p>Share approximate zones, recurring days, schedule windows, Access Point preferences, and multimodal preferences. Relay Rider can use those signals to prepare governed commuter-option previews once real participant and matching data are connected.</p>
                 <div className="hero-actions">
-                  <button className="primary-action" onClick={() => { setCommuteMode("need"); setTab("commute"); }}>Submit commute need</button>
-                  <button className="secondary-action" onClick={() => { setCommuteMode("route"); setTab("commute"); }}>Register planned route</button>
+                  <button className="primary-action" onClick={() => { setCommuteMode("need"); setTab("commute"); }}>Set up my commute</button>
+                  <button className="secondary-action" onClick={() => { setCommuteMode("route"); setTab("commute"); }}>Register a planned route</button>
                 </div>
               </section>
 
               <section className="status-card">
-                <div className="status-icon"><CheckCircledIcon /></div>
+                <div className="status-icon">{submission ? <CalendarIcon /> : <PersonIcon />}</div>
                 <div>
-                  <small>TRUST READINESS</small>
-                  <strong>4 of 4 participant checks ready for this demo</strong>
-                  <p>Approximate zones · cohort eligibility · contact verification · privacy controls</p>
+                  <small>PROTOTYPE SESSION</small>
+                  <strong>{submission ? "Commute signal saved" : "No commute profile yet"}</strong>
+                  <p>{submission
+                    ? `${submission.form.originZone} → ${submission.form.destination} · ${submission.days.join(", ")}`
+                    : "Enter your own commute information to begin testing the participant flow."}</p>
                 </div>
-                <span>Ready</span>
+                <span>{submission ? "Saved" : "Start"}</span>
               </section>
 
-              <div className="section-title"><h2>Program actions</h2><button onClick={() => setTab("program")}>Admin view</button></div>
+              <div className="section-title"><h2>What you can test</h2></div>
+              <button className="action-row" onClick={() => setTab("commute")}>
+                <span className="icon-tile"><CalendarIcon /></span>
+                <div><strong>Commute intake</strong><small>Approximate zones · schedule · Access Point preferences</small></div><ChevronRightIcon />
+              </button>
               <button className="action-row" onClick={() => setTab("options")}>
                 <span className="icon-tile"><SewingPinIcon /></span>
-                <div><strong>Review multimodal commuter options</strong><small>Planned route + transit + walking · explainable preview</small></div><ChevronRightIcon />
+                <div><strong>Commuter-option state</strong><small>Empty until a real matching source is connected</small></div><ChevronRightIcon />
               </button>
               <button className="action-row" onClick={() => setTab("trust")}>
                 <span className="icon-tile green-tile"><LockClosedIcon /></span>
-                <div><strong>Open Trust Center</strong><small>Verification · privacy · messaging · reporting</small></div><ChevronRightIcon />
+                <div><strong>Privacy and trust controls</strong><small>Participant-facing defaults without fake verification</small></div><ChevronRightIcon />
               </button>
-              <button className="action-row" onClick={() => setTab("program")}>
-                <span className="icon-tile yellow-tile"><LightningBoltIcon /></span>
-                <div><strong>Review incentive scenarios</strong><small>Institution-funded · capped · administrative approval required</small></div><ChevronRightIcon />
-              </button>
-
-              <div className="metric-grid">
-                <article className="metric"><small>Demand</small><strong>19</strong><span>modeled signals</span></article>
-                <article className="metric"><small>Planned routes</small><strong>12</strong><span>registered</span></article>
-                <article className="metric"><small>Multimodal</small><strong>7</strong><span>compatible previews</span></article>
-                <article className="metric"><small>Admin review</small><strong>5</strong><span>pending items</span></article>
-              </div>
             </>
           )}
 
@@ -225,126 +184,151 @@ export default function PrototypePhase1() {
 
               <section className="notice-at-collection">
                 <LockClosedIcon />
-                <p><strong>Privacy by default:</strong> use approximate zones and commute windows during intake and preview. Exact private locations are not required to generate these demonstration options.</p>
+                <p><strong>Privacy by default:</strong> use approximate origin/destination zones and time windows. Do not enter a home address in this research prototype.</p>
               </section>
 
               <section className="form-card">
                 <div className="form-heading">
                   <span className="icon-tile"><CalendarIcon /></span>
-                  <div><small>{commuteMode === "need" ? "COMMUTER NEED INTAKE" : "PLANNED ROUTE REGISTRATION"}</small><h2>{commuteMode === "need" ? "Recurring campus commute" : "Existing route availability"}</h2></div>
+                  <div>
+                    <small>{commuteMode === "need" ? "COMMUTER NEED INTAKE" : "PLANNED ROUTE REGISTRATION"}</small>
+                    <h2>{commuteMode === "need" ? "Your recurring commute" : "A trip you already intend to make"}</h2>
+                  </div>
                 </div>
-                <Field label="Approximate origin zone" value={commuteMode === "need" ? "Glendale Central" : "Glendale / Brand corridor"} />
-                <Field label="Destination" value="Pasadena City College" />
-                <div className="field-block"><small>Recurring days</small><div className="day-row">{["Mon", "Tue", "Wed", "Thu", "Fri"].map((day) => <button key={day} className={selectedDays.includes(day) ? "selected" : ""} onClick={() => toggleDay(day)}>{day}</button>)}</div></div>
-                <Field label="Morning window" value="7:45–8:30 AM" />
-                <Field label="Schedule flexibility" value="±15 minutes" />
+
+                <PrototypeInput id="origin-zone" label="Approximate origin zone *" placeholder="e.g. Central Glendale" value={form.originZone} onChange={(value) => updateField("originZone", value)} />
+                <PrototypeInput id="destination" label="Destination zone *" placeholder="e.g. Pasadena City College" value={form.destination} onChange={(value) => updateField("destination", value)} />
+
+                <div className="field-block">
+                  <small>Recurring days *</small>
+                  <div className="day-row">{["Mon", "Tue", "Wed", "Thu", "Fri"].map((day) => (
+                    <button key={day} type="button" className={selectedDays.includes(day) ? "selected" : ""} onClick={() => toggleDay(day)}>{day}</button>
+                  ))}</div>
+                </div>
+
+                <PrototypeInput id="morning-window" label="Travel / arrival window *" placeholder="e.g. arrive between 8:00–8:30 AM" value={form.morningWindow} onChange={(value) => updateField("morningWindow", value)} />
+                <PrototypeInput id="flexibility" label="Schedule flexibility" placeholder="e.g. ±15 minutes" value={form.flexibility} onChange={(value) => updateField("flexibility", value)} />
+                <PrototypeInput id="access-point" label="Access Point preference" placeholder="e.g. public transit station or campus stop" value={form.accessPointPreference} onChange={(value) => updateField("accessPointPreference", value)} />
+                <PrototypeInput id="transit-preference" label="Transit / shuttle preference" placeholder="e.g. A Line and PCC shuttle are acceptable" value={form.transitPreference} onChange={(value) => updateField("transitPreference", value)} />
+                <PrototypeInput id="ev-preference" label="EV / hybrid preference" placeholder="Optional preference" value={form.evPreference} onChange={(value) => updateField("evPreference", value)} />
+                <PrototypeInput id="accessibility" label="Accessibility needs" placeholder="Optional; describe only what is needed for trip planning" value={form.accessibilityNeeds} onChange={(value) => updateField("accessibilityNeeds", value)} />
+
                 {commuteMode === "need" ? (
-                  <>
-                    <Field label="Maximum total travel time" value="60 minutes" />
-                    <Field label="Maximum walk" value="10 minutes per segment" />
-                    <Field label="Transit preference" value="A Line connection acceptable" />
-                    <Field label="Micromobility willingness" value="Optional" />
-                    <Field label="Parking difficulty" value="Often difficult" />
-                    <Field label="Access Point willingness" value="Yes · public locations preferred" />
-                    <Field label="EV/hybrid preference" value="Preferred, not required" />
-                    <Field label="Accessibility preference" value="No request recorded" />
-                  </>
+                  <PrototypeInput id="parking-difficulty" label="Parking difficulty" placeholder="Optional; e.g. often difficult" value={form.parkingDifficulty} onChange={(value) => updateField("parkingDifficulty", value)} />
                 ) : (
                   <>
-                    <Field label="Available capacity" value="1 seat" />
-                    <Field label="Maximum detour" value="Up to 8 minutes" />
-                    <Field label="Preferred Access Points" value="Glendale Transportation Center · Memorial Park" />
-                    <Field label="EV/hybrid status" value="EV verification pending" />
-                    <Field label="Existing-route confirmation" value="I already intend to make this trip" />
-                    <Field label="Verification willingness" value="Yes · document review required before beta" />
+                    <PrototypeInput id="capacity" label="Available capacity" placeholder="e.g. 1 seat" value={form.capacity} onChange={(value) => updateField("capacity", value)} />
+                    <PrototypeInput id="max-detour" label="Maximum detour" placeholder="e.g. up to 8 minutes" value={form.maxDetour} onChange={(value) => updateField("maxDetour", value)} />
+                    <PrototypeInput id="planned-route-note" label="Existing-route note" placeholder="Briefly describe the route you already plan to travel" value={form.plannedRouteNote} onChange={(value) => updateField("plannedRouteNote", value)} />
                   </>
                 )}
-                <Field label="Privacy setting" value="Approximate zones until approved workflow" />
-                <button className="primary-action" onClick={() => setTab("options")}>{commuteMode === "need" ? "Generate commuter-option previews" : "Register planned route"}</button>
-                <p className="form-footnote">Prototype only. Submission does not purchase transportation, activate a route, guarantee acceptance, or trigger an automatic payment.</p>
+
+                <div className="prototype-privacy-summary">
+                  <LockClosedIcon />
+                  <div><strong>Approximate-zone mode is on.</strong><p>Exact private locations are not required for this prototype intake.</p></div>
+                </div>
+
+                <button className="primary-action" disabled={!canSubmit} onClick={submitCommute}>{commuteMode === "need" ? "Save commute signal" : "Save planned-route signal"}</button>
+                {!canSubmit && <p className="form-footnote">Complete origin zone, destination zone, at least one recurring day, and a travel/arrival window to continue.</p>}
+                <p className="form-footnote">Saving this prototype form does not purchase transportation, activate a route, create a confirmed fare, guarantee a match, or send information to another participant.</p>
               </section>
             </>
           )}
 
           {tab === "options" && (
             <>
-              <section className="prototype-disclaimer"><ExclamationTriangleIcon /><p><strong>Simulated commuter options.</strong> These previews combine planned-route, Access Point, walking, and public-transit segments. They are not reservations and remain subject to participant consent and administrative review.</p></section>
-              <div className="section-title"><h2>Compatible previews</h2><span>2 modeled</span></div>
-              <div className="option-list">
-                {OPTIONS.map((option) => (
-                  <button key={option.id} className={`option-card ${selectedOption.id === option.id ? "selected" : ""}`} onClick={() => { setSelectedOption(option); setInterestSent(false); setMessageState("locked"); }}>
-                    <div className="option-top"><small>{option.label}</small><span>{option.review}</span></div>
-                    <strong>{option.route}</strong><p>{option.window} · {option.totalTime}</p>
-                    <div className="option-metrics"><b>{option.compatibility}% compatibility</b><span>{option.detour}</span></div>
-                  </button>
-                ))}
-              </div>
-
-              <section className="detail-card">
-                <div className="section-title"><h2>Why this option appeared</h2><span>Explainable</span></div>
-                <div className="score-grid"><Score label="Compatibility" value={selectedOption.compatibility} /><Score label="Route fit" value={selectedOption.routeFit} /><Score label="Schedule fit" value={selectedOption.scheduleFit} /><Score label="Multimodal fit" value={selectedOption.multimodalFit} /></div>
-                <div className="badge-row"><span className="status-pill good">Trust: {selectedOption.trustReadiness}</span><span className="status-pill">{selectedOption.review}</span></div>
-                <h3 className="mini-heading">Multimodal itinerary</h3>
-                <div className="itinerary">{selectedOption.segments.map((segment, index) => <div className="itinerary-row" key={`${segment.mode}-${index}`}><span>{index + 1}</span><div><small>{segment.time} · {segment.mode}</small><strong>{segment.detail}</strong></div></div>)}</div>
-                <Field label="Estimated detour impact" value={selectedOption.detour} />
-                <Field label="Designated Access Point" value={selectedOption.accessPoint} />
-                <Field label="Vehicle indicator" value={selectedOption.vehicle} />
-                <Field label="Contribution compatibility" value={selectedOption.contribution} />
-                <Field label="Potential benefit" value={selectedOption.incentive} />
-                <ul className="reason-list">{selectedOption.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
-                <button className={`primary-action ${interestSent ? "success-action" : ""}`} onClick={() => setInterestSent(true)}>{interestSent ? "Interest recorded · administrative review pending" : "Express route interest"}</button>
-                <p className="form-footnote">A proposed contribution is not a confirmed fare or transportation purchase. Incentive eligibility is modeled and requires funding, rule checks, and administrative approval.</p>
+              <section className="prototype-disclaimer">
+                <ExclamationTriangleIcon />
+                <p><strong>No seeded commuter matches.</strong> This user-test build intentionally does not fabricate compatibility scores, planned-route participants, contributions, incentives, or itineraries.</p>
               </section>
+
+              {submission ? (
+                <>
+                  <section className="session-summary-card">
+                    <small>YOUR PROTOTYPE SIGNAL</small>
+                    <strong>{submission.form.originZone} → {submission.form.destination}</strong>
+                    <p>{submission.days.join(", ")} · {submission.form.morningWindow}</p>
+                    <span>{submission.mode === "need" ? "Commuter need" : "Planned route"}</span>
+                  </section>
+                  <EmptyState
+                    icon={<SewingPinIcon />}
+                    title="No commuter options yet"
+                    body="Your commute signal is saved for this browser session. Real commuter options should only appear after a matching data source, eligible participant records, program rules, and administrative review workflow are connected."
+                    action="Edit my commute"
+                    onAction={() => setTab("commute")}
+                  />
+                </>
+              ) : (
+                <EmptyState
+                  icon={<CalendarIcon />}
+                  title="Start with your commute"
+                  body="There is no participant commute signal in this session yet. Submit your own approximate commute information before reviewing the option state."
+                  action="Set up my commute"
+                  onAction={() => setTab("commute")}
+                />
+              )}
             </>
           )}
 
           {tab === "trust" && (
             <>
-              <section className="trust-hero"><LockClosedIcon /><div><small>PARTICIPANT TRUST CENTER</small><strong>Confidence through visible controls</strong><p>Verification, privacy, reporting, and communication permissions are separated from route-fit scoring so participants can understand what has and has not been reviewed.</p></div></section>
-              <div className="section-title"><h2>Verification status</h2><span>Prototype states</span></div>
-              <div className="verification-list">{VERIFICATION.map((item) => <article className="verification-row" key={item.label}><span className={`dot ${item.tone}`} /><div><strong>{item.label}</strong><small>{item.status}</small></div><CheckCircledIcon /></article>)}</div>
+              <section className="trust-hero">
+                <LockClosedIcon />
+                <div><small>PARTICIPANT TRUST CENTER</small><strong>Nothing is pre-verified.</strong><p>Verification, privacy, reporting, and communication should reflect real participant state. This prototype therefore begins with verification and connections unset.</p></div>
+              </section>
+
+              <div className="section-title"><h2>Verification status</h2><span>Not connected</span></div>
+              <div className="verification-list">
+                {VERIFICATION_ITEMS.map((item) => (
+                  <article className="verification-row" key={item.label}>
+                    <span className="dot neutral" />
+                    <div><strong>{item.label}</strong><small>{item.status}</small></div>
+                    <LockClosedIcon />
+                  </article>
+                ))}
+              </div>
 
               <h2 className="standalone-title trust-section-title">Privacy controls</h2>
-              <ToggleRow title="Approximate zones" detail="Hide exact private addresses during intake and preview" enabled />
-              <ToggleRow title="Masked contact details" detail="Do not expose phone or email before eligible-to-connect state" enabled />
-              <ToggleRow title="Trusted-contact sharing" detail="Future controlled-beta workflow · not active in this prototype" enabled={false} />
+              <ToggleRow title="Approximate zones" detail="Use general zones instead of exact private addresses during intake and preview" enabled={approximateZones} onChange={setApproximateZones} />
+              <ToggleRow title="Masked contact details" detail="Keep phone and email hidden until a governed connection state exists" enabled={maskedContact} onChange={setMaskedContact} />
 
               <h2 className="standalone-title trust-section-title">Governed messaging</h2>
               <section className="message-card">
-                <div><span className="status-pill locked"><LockClosedIcon /> Connection locked</span><h3>Messaging opens after eligibility and review.</h3><p>No phone number, email, exact address, payment request, or unrestricted file sharing is required for the match-preview stage.</p></div>
-                <button className="secondary-action" onClick={() => setMessageState("requested")}>{messageState === "requested" ? "Connection request recorded" : "Request connection review"}</button>
+                <div><span className="status-pill locked"><LockClosedIcon /> Connection unavailable</span><h3>No eligible participant connection exists.</h3><p>Messaging should not open until real eligibility, consent, program-rule, and administrative-review requirements are satisfied.</p></div>
               </section>
 
-              <h2 className="standalone-title trust-section-title">Reliability feedback</h2>
-              <div className="feedback-grid"><Feedback label="On-time window" value="Demo: positive" /><Feedback label="Clear communication" value="Demo: positive" /><Feedback label="Access Point compliance" value="No issue recorded" /><Feedback label="Privacy respect" value="No issue recorded" /></div>
-              <p className="form-footnote">Behavior-specific feedback is shown instead of an unrestricted public safety score. Relay Rider does not guarantee participant safety.</p>
-
-              <button className={`action-row report-row ${reported ? "reported" : ""}`} onClick={() => setReported(true)}><span className="icon-tile peach-tile"><ExclamationTriangleIcon /></span><div><strong>{reported ? "Issue report opened · demonstration" : "Report an issue"}</strong><small>Safety · privacy · accessibility · participant conduct</small></div><ChevronRightIcon /></button>
+              <h2 className="standalone-title trust-section-title">Reliability & issue history</h2>
+              <EmptyState icon={<LockClosedIcon />} title="No participant history" body="No ratings, reliability events, issue reports, or conduct records are seeded into this prototype." />
+              <p className="form-footnote">A future controlled beta should connect reporting, blocking, suspension, escalation, and retention workflows before participant-to-participant coordination is enabled.</p>
             </>
           )}
 
           {tab === "program" && (
             <>
-              <section className="program-card"><small>PASADENA CITY COLLEGE</small><h2>Institutional program console</h2><p>Prototype administrator view for trust, commuter-option review, Access Points, incentive scenarios, and measurable TDM outcomes.</p></section>
+              <section className="program-card">
+                <small>PCC-FOCUSED RESEARCH PROTOTYPE</small>
+                <h2>Participant program status</h2>
+                <p>PCC locations, Metro A Line stations, and publicly described PCC shuttle connections are used as mobility context for user testing. This screen does not imply PCC sponsorship, approval, or participant eligibility.</p>
+              </section>
 
-              <div className="metric-grid">
-                <article className="metric"><small>Verification</small><strong>84%</strong><span>modeled completion</span></article>
-                <article className="metric"><small>Multimodal</small><strong>58%</strong><span>previews include transit</span></article>
-                <article className="metric"><small>Access Point</small><strong>73%</strong><span>modeled preference</span></article>
-                <article className="metric"><small>Review SLA</small><strong>1.4d</strong><span>scenario average</span></article>
+              <div className="program-status-list">
+                <StatusRow label="Prototype stage" value="Research prototype" />
+                <StatusRow label="Institution eligibility" value="Not verified" />
+                <StatusRow label="Participant network" value="Not connected" />
+                <StatusRow label="Program benefits" value="Not configured" />
+                <StatusRow label="Live transportation" value="Not active" />
               </div>
 
-              <h2 className="standalone-title admin-title">Administrative review queue</h2>
-              <div className="review-list">{REVIEW_QUEUE.map((item) => <article className="review-card" key={item.id}><div className="review-card-top"><span>{item.id}</span><b className={`risk ${item.risk.toLowerCase().replace(" ", "-")}`}>{item.risk}</b></div><strong>{item.type} · {item.subject}</strong><p>{item.reason}</p><div className="review-actions"><button>Review details</button><span>{item.status}</span></div></article>)}</div>
+              <h2 className="standalone-title admin-title">What this build is ready to test</h2>
+              <section className="prototype-checklist">
+                <p>1. Whether commuters understand approximate-zone intake.</p>
+                <p>2. Whether Metro, PCC shuttle, Access Point, and corridor context are useful on the map.</p>
+                <p>3. Whether planned-route registration and privacy language are understandable before matching is connected.</p>
+              </section>
 
-              <h2 className="standalone-title admin-title">Incentive strategy</h2>
-              <div className="benefit-list">{BENEFITS.map((benefit) => <article className="benefit-card" key={benefit.title}><div><small>{benefit.rule}</small><strong>{benefit.title}</strong></div><span>{benefit.value}</span></article>)}</div>
-              <section className="incentive-rule"><LightningBoltIcon /><div><strong>Modeled rule example</strong><p>If Pasadena–Glendale morning parking pressure exceeds the scenario threshold and a commuter option meets program eligibility, show an estimated 4-point employer-sponsored Green Route Credit, subject to budget and administrative approval.</p></div></section>
+              <section className="legal-note"><LockClosedIcon /><p>Proposed contributions, Green Route Credits, participant verification, messaging, matching, and administrative decisions are not active in this clean user-test build.</p></section>
 
-              <h2 className="standalone-title admin-title">Program safeguards</h2>
-              <button className="action-row"><span className="icon-tile"><GlobeIcon /></span><div><strong>Access Point review</strong><small>Visibility · accessibility · route compatibility · institutional suitability</small></div><ChevronRightIcon /></button>
-              <button className="action-row"><span className="icon-tile green-tile"><LockClosedIcon /></span><div><strong>Data & privacy controls</strong><small>Approximate zones · role permissions · retention · deletion requests</small></div><ChevronRightIcon /></button>
-              <section className="legal-note"><LockClosedIcon /><p>Green Route Credits and other benefits are promotional or employer-sponsored program benefits. They are not cash, wages, fares, guaranteed earnings, certified offsets, or guaranteed reimbursements.</p></section>
+              <button className="secondary-action reset-session-button" onClick={resetPrototypeSession}>Reset prototype session</button>
             </>
           )}
         </main>
@@ -361,18 +345,69 @@ export default function PrototypePhase1() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
-  return <div className="field-row"><small>{label}</small><strong>{value}</strong><ChevronRightIcon /></div>;
+function PrototypeInput({
+  id,
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="prototype-input-field" htmlFor={id}>
+      <small>{label}</small>
+      <KeyboardInput id={id} value={value} placeholder={placeholder} onChange={(event) => onChange(event.currentTarget.value)} />
+    </label>
+  );
 }
 
-function Score({ label, value }: { label: string; value: number }) {
-  return <div className="score-card"><small>{label}</small><strong>{value}</strong><div><i style={{ width: `${value}%` }} /></div></div>;
+function ToggleRow({
+  title,
+  detail,
+  enabled,
+  onChange,
+}: {
+  title: string;
+  detail: string;
+  enabled: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <button className="toggle-row toggle-row-button" type="button" role="switch" aria-checked={enabled} onClick={() => onChange(!enabled)}>
+      <div><strong>{title}</strong><small>{detail}</small></div>
+      <span className={`switch ${enabled ? "on" : ""}`}><i /></span>
+    </button>
+  );
 }
 
-function ToggleRow({ title, detail, enabled }: { title: string; detail: string; enabled: boolean }) {
-  return <article className="toggle-row"><div><strong>{title}</strong><small>{detail}</small></div><span className={`switch ${enabled ? "on" : ""}`}><i /></span></article>;
+function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+  onAction,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <section className="empty-state-card">
+      <span className="empty-state-icon">{icon}</span>
+      <strong>{title}</strong>
+      <p>{body}</p>
+      {action && onAction && <button className="secondary-action" onClick={onAction}>{action}</button>}
+    </section>
+  );
 }
 
-function Feedback({ label, value }: { label: string; value: string }) {
-  return <article className="feedback-card"><small>{label}</small><strong>{value}</strong></article>;
+function StatusRow({ label, value }: { label: string; value: string }) {
+  return <article className="program-status-row"><small>{label}</small><strong>{value}</strong></article>;
 }
