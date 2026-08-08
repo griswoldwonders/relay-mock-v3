@@ -260,7 +260,7 @@ export default function PrototypePhase1() {
       setDataConsent(false);
       setPrototypeAcknowledged(false);
       setWithdrawConfirm(false);
-      setNotice("Your research submission was withdrawn. No commuter option or participant connection was created.");
+      setNotice("Your research submission was withdrawn. It is no longer eligible for match-preview processing and remains scheduled for automatic deletion within the original 90-day retention period.");
       setTab("home");
     } catch (error) {
       setWithdrawError(error instanceof Error ? error.message : "Withdrawal could not be completed.");
@@ -346,7 +346,7 @@ export default function PrototypePhase1() {
                 <ConsentRow checked={age18Plus} onChange={setAge18Plus} title="I am 18 or older" detail="This research prototype is intended for adult participants." />
                 <ConsentRow checked={prototypeAcknowledged} onChange={setPrototypeAcknowledged} title="I understand this is a research beta" detail="A submission is not a transportation purchase, confirmed fare, guaranteed match, or guaranteed route." />
                 <ConsentRow checked={dataConsent} onChange={setDataConsent} title="I consent to storage and research use of this commute signal" detail="The record uses approximate zones and a random participant reference. You can edit or withdraw it from this device." />
-                <p className="consent-footnote">Exact retention timing and the final external-beta deletion policy will be published before broader enrollment. Participant-to-participant contact is not enabled in this build.</p>
+                <p className="consent-footnote">Research-beta records are retained for no more than 90 days from initial submission and are then automatically deleted. Editing does not restart the 90-day clock. Participant-to-participant contact is not enabled in this build.</p>
               </section>
 
               <section className="notice-at-collection">
@@ -499,6 +499,7 @@ export default function PrototypePhase1() {
                 <StatusRow label="Participant contact" value="Masked / not connected" />
                 <StatusRow label="Participant identifier" value={submission?.participantRef ?? "Created on submission"} />
                 <StatusRow label="Consent version" value={submission?.consentVersion ?? CONSENT_VERSION} />
+                <StatusRow label="Research retention" value="Automatic deletion after 90 days" />
               </div>
 
               <h2 className="standalone-title trust-section-title">Governed messaging</h2>
@@ -523,6 +524,7 @@ export default function PrototypePhase1() {
                 <StatusRow label="Research record" value={submission ? "Submitted" : "Not submitted"} />
                 <StatusRow label="Participant reference" value={submission?.participantRef ?? "—"} />
                 <StatusRow label="Stored record status" value={submission?.status ?? "—"} />
+                <StatusRow label="Retention" value="90 days from initial submission" />
                 <StatusRow label="Match Preview Engine" value="Not connected" />
                 <StatusRow label="Participant messaging" value="Locked" />
                 <StatusRow label="Live transportation" value="Not active" />
@@ -536,7 +538,7 @@ export default function PrototypePhase1() {
                   ) : (
                     <section className="withdraw-card">
                       <strong>Withdraw this submission?</strong>
-                      <p>The record will be marked withdrawn and will no longer be eligible for future match-preview processing. This does not yet represent a finalized data-retention/deletion policy.</p>
+                      <p>The record will be marked withdrawn immediately and will no longer be eligible for future match-preview processing. Withdrawal does not extend retention; the record remains scheduled for automatic deletion no later than 90 days after its original submission date.</p>
                       <div><button className="danger-action" onClick={confirmWithdrawal}>Confirm withdrawal</button><button className="secondary-action" onClick={() => setWithdrawConfirm(false)}>Cancel</button></div>
                       {withdrawError && <p className="form-error">{withdrawError}</p>}
                     </section>
@@ -546,7 +548,7 @@ export default function PrototypePhase1() {
                 <EmptyState icon={<CalendarIcon />} title="No research submission" body="Submit a commute need or planned-route signal to receive a participant reference and manage the stored record from this device." action="Start intake" onAction={() => startNewDraft("need")} />
               )}
 
-              <section className="legal-note"><LockClosedIcon /><p>Proposed contributions are willingness-to-contribute signals only. Green Route Credits, participant verification, matching, messaging, administrative decisions, and transportation operation are not active in this research-beta foundation.</p></section>
+              <section className="legal-note"><LockClosedIcon /><p>Research-beta records are automatically deleted after 90 days. Proposed contributions are willingness-to-contribute signals only. Green Route Credits, participant verification, matching, messaging, administrative decisions, and transportation operation are not active in this research-beta foundation.</p></section>
             </>
           )}
         </main>
