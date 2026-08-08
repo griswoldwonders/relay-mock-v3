@@ -14,10 +14,14 @@
 - [x] Interactive map preserves Leaflet and adds the requested mobility layers.
 - [x] Demo records are labeled DEMO DATA / MODELED / ESTIMATED / SIMULATED.
 - [x] No screen implies live dispatch, instant pickup, guaranteed transportation, automatic payment, guaranteed earnings, or unrestricted ride-hailing.
+- [x] Production build/runtime checks pass.
+- [x] CodeQL and dependency review pass.
+- [x] Netlify deploy preview is built from the final validated branch head.
+- [x] New research-beta governance fields round-trip through the Supabase staging RPC; validation data was removed after testing.
 
-## Next acceptance work
+## Remaining acceptance work
 
-- [ ] Run production build/runtime checks.
-- [ ] Run CodeQL and dependency review.
-- [ ] Validate Netlify deploy preview.
-- [ ] Conduct visual and interaction QA on both iPhone and Pixel 10 presets.
+- [ ] Conduct hands-on visual and interaction QA on both iPhone and Pixel 10 presets.
+- [ ] Surface the newly supported institution/cohort/privacy context and planned-route governance fields in the participant intake UI.
+- [ ] Replace demonstration role switching with authenticated production RBAC before governed program use.
+- [ ] Replace simulated match-preview scoring with source-backed computation from eligible participant records.
