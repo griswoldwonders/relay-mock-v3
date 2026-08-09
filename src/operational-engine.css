@@ -1,1 +1,527 @@
-.ops-shell{padding:24px;min-height:100%;background:#090d12;color:#eef3f7}.ops-header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding:22px;border:1px solid #222c36;border-radius:18px;background:linear-gradient(180deg,#101720,#0b1118)}.ops-header h2,.ops-panel h3,.ops-match-grid h4{margin:6px 0 8px}.ops-header p,.ops-panel p{margin:0;color:#9eabb8;line-height:1.5}.ops-kicker{font-size:11px;font-weight:900;letter-spacing:.14em;color:#77d9c6}.ops-role{display:grid;gap:4px;text-align:right}.ops-role span{font-size:12px;color:#8593a1}.ops-nav{display:flex;gap:8px;overflow:auto;padding:16px 0}.ops-nav button,.ops-panel button,.ops-row-actions button,.ops-invite-link button{border:1px solid #2a3743;border-radius:10px;background:#111923;color:#dce6ee;min-height:38px;padding:0 12px;font-weight:800;cursor:pointer}.ops-nav button.active,.ops-panel button:not(.ops-secondary){background:#18342e;border-color:#2b6e5d;color:#a7f2df}.ops-secondary{background:#111923!important}.ops-alert{margin:0 0 12px;padding:12px 14px;border-radius:10px;border:1px solid}.ops-alert.error{border-color:#6e3434;background:#2b1515;color:#ffc0c0}.ops-alert.notice{border-color:#2e6559;background:#10241f;color:#a9eadb}.ops-loading,.ops-empty{padding:24px;color:#84919e;border:1px dashed #2a3540;border-radius:12px}.ops-two-col,.ops-three-col{display:grid;gap:16px}.ops-two-col{grid-template-columns:repeat(2,minmax(0,1fr))}.ops-three-col{grid-template-columns:repeat(3,minmax(0,1fr))}.ops-stack{display:grid;gap:16px}.ops-panel{border:1px solid #202a34;border-radius:16px;background:#0d141c;padding:18px;min-width:0}.ops-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.ops-form{display:grid;gap:10px;margin-top:16px}.ops-form input,.ops-form select,.ops-invite-link input{width:100%;box-sizing:border-box;min-height:42px;border:1px solid #2c3945;border-radius:10px;background:#080d12;color:#e9f0f5;padding:0 11px}.ops-check{display:flex;gap:10px;align-items:flex-start;color:#aeb9c4;font-size:13px}.ops-check input{width:auto;min-height:auto;margin-top:2px}.ops-invite-link{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}.ops-list{display:grid;gap:9px;margin-top:14px}.ops-list article{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;border:1px solid #202b35;border-radius:12px;background:#0a1016}.ops-list article>div:first-child{display:grid;gap:3px}.ops-list strong{overflow-wrap:anywhere}.ops-list span,.ops-list small{color:#8f9daa;font-size:12px}.ops-list.compact article{padding:10px}.ops-list article.selected{border-color:#397966}.ops-row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ops-row-actions select{min-height:36px;border:1px solid #2d3944;border-radius:8px;background:#0c131a;color:#dfe7ed;padding:0 8px}.ops-validation{margin-top:14px;border-top:1px solid #25303a;padding-top:12px}.ops-validation p{font-size:12px;margin:7px 0}.ops-table{margin-top:14px;display:grid;border:1px solid #202a34;border-radius:12px;overflow:hidden}.ops-table-head,.ops-table-row{display:grid;grid-template-columns:2fr repeat(5,minmax(80px,1fr));gap:10px;align-items:center;padding:11px 12px}.ops-table-head{background:#101922;color:#7d8b99;font-size:11px;text-transform:uppercase;letter-spacing:.06em}.ops-table-row{border-top:1px solid #202a34;font-size:13px}.ops-table-row span{display:grid;gap:2px}.ops-table-row small{color:#83909d}.ops-match-grid{display:grid;gap:10px;margin-top:16px}.ops-match-grid article{display:grid;grid-template-columns:90px 1fr;gap:14px;border:1px solid #23303a;border-radius:14px;padding:14px;background:#0a1118}.ops-score{display:grid;place-content:center;text-align:center;border-right:1px solid #24303a}.ops-score strong{font-size:28px;color:#92e5d3}.ops-score span{font-size:10px;text-transform:uppercase;color:#7d8a96}.ops-tags{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}.ops-tags span{font-size:11px;padding:5px 8px;border:1px solid #2b3944;border-radius:999px;color:#aebac5}.ops-match-grid small{color:#85939f}.ops-panel button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:980px){.ops-two-col,.ops-three-col{grid-template-columns:1fr}.ops-header{flex-direction:column}.ops-role{text-align:left}.ops-table{overflow:auto}.ops-table-head,.ops-table-row{min-width:760px}.ops-panel-heading{flex-direction:column}.ops-shell{padding:14px}}
+/* Relay Rider operational engine presentation layer.
+   Aligned to the soft-card institutional TDM design system in soft-card-ui.css.
+   This file changes presentation only; product logic and data behavior are unchanged.
+
+   Palette is token-driven and scoped to .ops-shell so the console can be
+   re-themed without touching markup. The dark block at the end of this file is
+   the previous console palette, kept as an opt-in variant. */
+
+.ops-shell {
+  /* Surfaces */
+  --ops-canvas: var(--rr-canvas, #eef1f6);
+  --ops-surface: var(--rr-surface, #ffffff);
+  --ops-surface-sunken: var(--rr-neutral, #f5f6f9);
+  --ops-line: var(--rr-line, rgba(33, 38, 52, 0.07));
+  --ops-line-strong: rgba(33, 38, 52, 0.14);
+
+  /* Ink */
+  --ops-ink: var(--rr-ink, #161823);
+  --ops-muted: var(--rr-muted, #6f7480);
+
+  /* Accent — deep teal reads as institutional rather than consumer,
+     and holds AA contrast on both white and mint. */
+  --ops-accent: #0f6b57;
+  --ops-accent-ink: #0b5244;
+  --ops-accent-wash: var(--rr-mint, #dff5e9);
+
+  /* Status */
+  --ops-danger-ink: #8c2f22;
+  --ops-danger-wash: var(--rr-coral, #ffdcd2);
+  --ops-notice-ink: #1f5c3d;
+  --ops-notice-wash: var(--rr-green, #d9f3dc);
+
+  /* Form */
+  --ops-radius-lg: var(--rr-radius-lg, 22px);
+  --ops-radius-md: var(--rr-radius-md, 16px);
+  --ops-radius-sm: 12px;
+  --ops-shadow: var(--rr-shadow, 0 18px 48px rgba(31, 38, 56, 0.08));
+  --ops-shadow-soft: var(--rr-shadow-soft, 0 10px 28px rgba(31, 38, 56, 0.06));
+
+  padding: 28px;
+  min-height: 100%;
+  background: var(--ops-canvas);
+  color: var(--ops-ink);
+}
+
+/* ---------- Header ---------- */
+
+.ops-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 26px 28px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius-lg);
+  background: var(--ops-surface);
+  box-shadow: var(--ops-shadow-soft);
+}
+
+.ops-header h2,
+.ops-panel h3,
+.ops-match-grid h4 {
+  margin: 6px 0 8px;
+  letter-spacing: -0.01em;
+}
+
+.ops-header p,
+.ops-panel p {
+  margin: 0;
+  color: var(--ops-muted);
+  line-height: 1.55;
+}
+
+.ops-kicker {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ops-accent-ink);
+}
+
+.ops-role {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+  padding: 10px 14px;
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-accent-wash);
+  color: var(--ops-accent-ink);
+  text-transform: capitalize;
+}
+
+.ops-role span {
+  font-size: 12px;
+  color: var(--ops-accent-ink);
+  opacity: 0.75;
+}
+
+/* ---------- Navigation ---------- */
+
+.ops-nav {
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  padding: 18px 0;
+}
+
+.ops-nav button,
+.ops-panel button,
+.ops-row-actions button,
+.ops-invite-link button {
+  border: 1px solid var(--ops-line-strong);
+  border-radius: 999px;
+  background: var(--ops-surface);
+  color: var(--ops-ink);
+  min-height: 38px;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.ops-nav button:hover,
+.ops-panel button:hover:not(:disabled),
+.ops-row-actions button:hover,
+.ops-invite-link button:hover {
+  border-color: var(--ops-accent);
+  color: var(--ops-accent-ink);
+}
+
+.ops-nav button.active,
+.ops-panel button:not(.ops-secondary) {
+  background: var(--ops-accent);
+  border-color: var(--ops-accent);
+  color: #ffffff;
+}
+
+.ops-nav button.active:hover,
+.ops-panel button:not(.ops-secondary):hover:not(:disabled) {
+  background: var(--ops-accent-ink);
+  border-color: var(--ops-accent-ink);
+  color: #ffffff;
+}
+
+.ops-secondary {
+  background: var(--ops-surface) !important;
+  color: var(--ops-ink) !important;
+}
+
+.ops-nav button:focus-visible,
+.ops-panel button:focus-visible,
+.ops-row-actions button:focus-visible,
+.ops-invite-link button:focus-visible,
+.ops-form input:focus-visible,
+.ops-form select:focus-visible,
+.ops-row-actions select:focus-visible {
+  outline: 2px solid var(--ops-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Alerts and placeholders ---------- */
+
+.ops-alert {
+  margin: 0 0 14px;
+  padding: 13px 16px;
+  border-radius: var(--ops-radius-sm);
+  border: 1px solid transparent;
+  font-size: 14px;
+}
+
+.ops-alert.error {
+  border-color: var(--ops-danger-ink);
+  background: var(--ops-danger-wash);
+  color: var(--ops-danger-ink);
+}
+
+.ops-alert.notice {
+  border-color: var(--ops-notice-ink);
+  background: var(--ops-notice-wash);
+  color: var(--ops-notice-ink);
+}
+
+.ops-loading,
+.ops-empty {
+  padding: 26px;
+  color: var(--ops-muted);
+  border: 1px dashed var(--ops-line-strong);
+  border-radius: var(--ops-radius-md);
+  background: var(--ops-surface-sunken);
+  text-align: center;
+  font-size: 14px;
+}
+
+/* ---------- Layout ---------- */
+
+.ops-two-col,
+.ops-three-col,
+.ops-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.ops-two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ops-three-col {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ---------- Panels ---------- */
+
+.ops-panel {
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius-lg);
+  background: var(--ops-surface);
+  padding: 24px;
+  min-width: 0;
+  box-shadow: var(--ops-shadow-soft);
+}
+
+.ops-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+/* ---------- Forms ---------- */
+
+.ops-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.ops-form input,
+.ops-form select,
+.ops-invite-link input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 42px;
+  border: 1px solid var(--ops-line-strong);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-surface);
+  color: var(--ops-ink);
+  padding: 0 13px;
+  font-size: 14px;
+}
+
+.ops-form input::placeholder {
+  color: var(--ops-muted);
+}
+
+.ops-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--ops-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ops-check input {
+  width: auto;
+  min-height: auto;
+  margin-top: 2px;
+  accent-color: var(--ops-accent);
+}
+
+.ops-invite-link {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ---------- Lists ---------- */
+
+.ops-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.ops-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius-md);
+  background: var(--ops-surface-sunken);
+}
+
+.ops-list article > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ops-list strong {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.ops-list span,
+.ops-list small {
+  color: var(--ops-muted);
+  font-size: 12px;
+}
+
+.ops-list.compact article {
+  padding: 11px 14px;
+}
+
+.ops-list article.selected {
+  border-color: var(--ops-accent);
+  background: var(--ops-accent-wash);
+}
+
+.ops-row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ops-row-actions select {
+  min-height: 36px;
+  border: 1px solid var(--ops-line-strong);
+  border-radius: 999px;
+  background: var(--ops-surface);
+  color: var(--ops-ink);
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.ops-validation {
+  margin-top: 16px;
+  border-top: 1px solid var(--ops-line);
+  padding-top: 14px;
+}
+
+.ops-validation p {
+  font-size: 12px;
+  margin: 7px 0;
+}
+
+/* ---------- Corridor table ---------- */
+
+.ops-table {
+  margin-top: 16px;
+  display: grid;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius-md);
+  overflow: hidden;
+}
+
+.ops-table-head,
+.ops-table-row {
+  display: grid;
+  grid-template-columns: 2fr repeat(5, minmax(80px, 1fr));
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.ops-table-head {
+  background: var(--ops-surface-sunken);
+  color: var(--ops-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ops-table-row {
+  border-top: 1px solid var(--ops-line);
+  font-size: 13px;
+  background: var(--ops-surface);
+}
+
+.ops-table-row span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ops-table-row small {
+  color: var(--ops-muted);
+}
+
+/* ---------- Match Previews ---------- */
+
+.ops-match-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.ops-match-grid article {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 18px;
+  border: 1px solid var(--ops-line);
+  border-radius: var(--ops-radius-md);
+  padding: 18px;
+  background: var(--ops-surface-sunken);
+}
+
+.ops-score {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  border-right: 1px solid var(--ops-line-strong);
+}
+
+.ops-score strong {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ops-accent-ink);
+  line-height: 1.1;
+}
+
+.ops-score span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ops-muted);
+}
+
+.ops-tags {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.ops-tags span {
+  font-size: 11px;
+  padding: 5px 11px;
+  border: 1px solid var(--ops-line-strong);
+  border-radius: 999px;
+  color: var(--ops-muted);
+  background: var(--ops-surface);
+}
+
+.ops-match-grid small {
+  color: var(--ops-muted);
+}
+
+.ops-panel button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 980px) {
+  .ops-two-col,
+  .ops-three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-header {
+    flex-direction: column;
+  }
+
+  .ops-role {
+    text-align: left;
+  }
+
+  .ops-table {
+    overflow: auto;
+  }
+
+  .ops-table-head,
+  .ops-table-row {
+    min-width: 760px;
+  }
+
+  .ops-panel-heading {
+    flex-direction: column;
+  }
+
+  .ops-shell {
+    padding: 16px;
+  }
+
+  .ops-panel {
+    padding: 18px;
+  }
+}
+
+/* ---------- Optional dark variant ----------
+   The previous console palette, retained as an opt-in token swap.
+   Apply with <section class="ops-shell" data-ops-theme="dark"> — no markup
+   or class changes are required beyond that attribute. */
+
+.ops-shell[data-ops-theme="dark"] {
+  --ops-canvas: #090d12;
+  --ops-surface: #0d141c;
+  --ops-surface-sunken: #0a1016;
+  --ops-line: #202a34;
+  --ops-line-strong: #2c3945;
+  --ops-ink: #eef3f7;
+  --ops-muted: #8f9daa;
+  --ops-accent: #2b6e5d;
+  --ops-accent-ink: #a7f2df;
+  --ops-accent-wash: #18342e;
+  --ops-danger-ink: #ffc0c0;
+  --ops-danger-wash: #2b1515;
+  --ops-notice-ink: #a9eadb;
+  --ops-notice-wash: #10241f;
+  --ops-shadow: none;
+  --ops-shadow-soft: none;
+}
+
+.ops-shell[data-ops-theme="dark"] .ops-nav button.active,
+.ops-shell[data-ops-theme="dark"] .ops-panel button:not(.ops-secondary) {
+  color: #a7f2df;
+}
