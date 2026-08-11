@@ -15,7 +15,7 @@
   "src/mobile/MobileRuntime.tsx": "2aefc951ac6e2fda5fd43730267d992b180f78f1902c6d0c285d060676e08b5e",
   "src/mobile/MobileScroll.tsx": "8473a4456596a476b5ae5dc9aa397a34ef52efd535192d00a75a4c4b688a9a16",
   "src/mobile/PhoneFrame.tsx": "b5ebc1355c776bf8a00cc14f680f1748d9a7da5d71cc8642c6191888c3309ff2",
-  "src/mobile/assets.ts": "588cec698a31e31ad5fe88f600dfdb9d63d6b029f01c5499692146a5f3",
+  "src/mobile/assets.ts": "588cec698a31e31ad5fe88f6b083f600dfdb9d63d6b029f01c5499692146a5f3",
   "src/mobile/components.tsx": "965ea5a742152baac0f14080a869f366f068d63e35560f9ac6a63e7baecfd651",
   "src/mobile/geometry.ts": "b565de6b1f0b4d6376008e9440201d5c7abcd877d32cc361081c15f2c8999d27",
   "src/mobile/index.ts": "17fd5b6e008873f60e04a1b8eb26d1e46b4edf4cf6580d2c26fa2361af71df91",
@@ -24,7 +24,7 @@
   "public/assets/android/Pixel10.png": "a87c1250ba20756f5d020b5351a7ae71d663dcfc64aca3a1cd56452e8a05233e",
   "public/assets/android/Keyboard.png": "6085e50be17ca2705b4351283187be2c5b01b58262c70b90d74b3376efb4adfe",
   "public/assets/android/navigation-bar.svg": "9d74d8913eedb154a118dabbb0eea9eada864ede4cbcfbdb8566471aba10b266",
-  "public/assets/status/status-icons.svg": "a82efb892a754a8e0c972f0e21233cd21bf5378bb98be58a8f7d0171115339",
+  "public/assets/status/status-icons.svg": "a82efb892a754a8e0c972f0e21233cd21bf5378bb98be58a8f7db35b22ecfbfa",
   "public/assets/status/ios-status-icons.svg": "04f277cd117375574bcd81ca3efec8521cdaf3e56ecb9aecad6dbcf916739591",
   "worker/index.js": "1a234cdb94a777085b246520ca7b660b55c5977cef1e529b7ef33d9a17254c3d"
 }
