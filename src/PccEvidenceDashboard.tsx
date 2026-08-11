@@ -1,65 +1,103 @@
+import { useEffect, useMemo, useState } from "react";
 import "./pcc-evidence-dashboard.css";
+import { fetchPasadenaAcsContext, pccInstitutionalMetrics, sourceRegistry, type EvidenceMetric, type PasadenaAcsContext } from "./pccEvidenceData";
 
-const corridors = [
-  { corridor: "Eagle Rock → PCC", participants: 31, vmt: "2,180 mi", previews: 14 },
-  { corridor: "Glendale → PCC", participants: 24, vmt: "2,640 mi", previews: 10 },
-  { corridor: "Highland Park → PCC", participants: 19, vmt: "988 mi", previews: 7 },
-  { corridor: "Pasadena Local → PCC", participants: 22, vmt: "540 mi", previews: 9 },
-];
+const classLabels: Record<EvidenceMetric["evidenceClass"], string> = {
+  official_estimate: "Official estimate",
+  institution_supplied: "Institution supplied",
+  participant_reported: "Participant reported",
+  relay_observed: "Relay Rider observed",
+  relay_modeled: "Relay Rider modeled",
+  unavailable: "Unavailable",
+};
 
-const modeLegend = [
-  ["Drive Alone", "68%", "mode-blue"],
-  ["Carpool", "9%", "mode-teal"],
-  ["Transit", "14%", "mode-gold"],
-  ["Walk/Bike", "5%", "mode-green"],
-  ["Other/Remote", "4%", "mode-gray"],
-] as const;
-
-function KpiCard({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return <article className="evidence-kpi"><span className="evidence-kpi-icon" aria-hidden="true">{icon}</span><div><p>{label}</p><strong>{value}</strong></div></article>;
+function valueOf(metric: EvidenceMetric) {
+  if (metric.value == null) return "Not available";
+  return metric.formatted ?? `${metric.value.toLocaleString()} ${metric.unit}`;
 }
 
-function BarPair({ baseline, current, baselineLabel, currentLabel, max }: { baseline: number; current: number; baselineLabel: string; currentLabel: string; max: number }) {
-  return <div className="evidence-bars" aria-label={`${baselineLabel} compared with ${currentLabel}`}>
-    <div className="evidence-bar-col"><span>{baselineLabel}</span><div className="evidence-bar-track"><div className="evidence-bar baseline" style={{ height: `${Math.max(8, (baseline / max) * 100)}%` }} /></div><small>Baseline</small></div>
-    <div className="evidence-bar-col"><span>{currentLabel}</span><div className="evidence-bar-track"><div className="evidence-bar current" style={{ height: `${Math.max(8, (current / max) * 100)}%` }} /></div><small>Current</small></div>
-  </div>;
+function MetricCard({ metric }: { metric: EvidenceMetric }) {
+  return <article className={`evidence-kpi evidence-class-${metric.evidenceClass}`}>
+    <div><p>{metric.label}</p><strong>{valueOf(metric)}</strong><small>{classLabels[metric.evidenceClass]}</small></div>
+  </article>;
+}
+
+function ProvenanceRow({ metric }: { metric: EvidenceMetric }) {
+  return <details className="provenance-row">
+    <summary><span>{metric.label}</span><b>{valueOf(metric)}</b><em>{classLabels[metric.evidenceClass]}</em></summary>
+    <div className="provenance-grid">
+      <p><b>Source</b>{metric.source || "Not yet connected"}</p>
+      <p><b>Vintage</b>{metric.vintage}</p>
+      <p><b>Geography</b>{metric.geography}</p>
+      <p><b>Sample / universe</b>{metric.sampleSize == null ? "Not available" : metric.sampleSize.toLocaleString()}</p>
+      <p><b>Refresh</b>{new Date(metric.refreshedAt).toLocaleString()}</p>
+      <p><b>Comparability</b>{metric.comparability.replaceAll("_", " ")}</p>
+      <p className="wide"><b>Methodology</b>{metric.methodology}</p>
+      <p className="wide"><b>Limitations</b>{metric.limitations.join(" · ")}</p>
+      {metric.sourceUrl && <p className="wide"><a href={metric.sourceUrl} target="_blank" rel="noreferrer">Open official source ↗</a></p>}
+    </div>
+  </details>;
 }
 
 export default function PccEvidenceDashboard() {
+  const [acs, setAcs] = useState<PasadenaAcsContext>({ status: "loading", metrics: [] });
+  useEffect(() => { fetchPasadenaAcsContext(import.meta.env.VITE_CENSUS_API_KEY).then(setAcs); }, []);
+
+  const allMetrics = useMemo(() => [...acs.metrics, ...pccInstitutionalMetrics], [acs.metrics]);
+  const contextMode = acs.metrics.filter((m) => ["pasadena_drive_alone", "pasadena_carpool", "pasadena_transit", "pasadena_walk_bike", "pasadena_wfh"].includes(m.key));
+
   return <main className="evidence-shell">
     <header className="evidence-header">
-      <div><p className="evidence-eyebrow">RELAY RIDER · MOBILITY EVIDENCE</p><h1>PCC / Pasadena Mobility Evidence Baseline</h1><p className="evidence-subtitle">Commuter baseline, weekly VMT, and modeled emissions comparison</p><div className="evidence-badges"><span className="badge demo">◉ Demonstration Environment</span><span className="badge info">ⓘ Illustrative demo data — not an official AQMD filing</span></div></div>
+      <div><p className="evidence-eyebrow">RELAY RIDER · PCC EVIDENCE WORKSPACE</p><h1>PCC / Pasadena Mobility Evidence Baseline</h1><p className="evidence-subtitle">Official Pasadena context + PCC institutional baseline + Relay Rider observations</p><div className="evidence-badges"><span className="badge demo">◉ Research beta</span><span className="badge info">ⓘ No PCC outcome is claimed until a verified institutional baseline and observation period are connected.</span></div></div>
       <div className="evidence-brand"><span>R</span><strong>Relay Rider</strong></div>
     </header>
 
-    <section className="evidence-kpi-grid" aria-label="Key metrics">
-      <KpiCard icon="◎" label="Participant Cohort" value="184" />
-      <KpiCard icon="▣" label="Drive-Alone Share" value="68%" />
-      <KpiCard icon="P" label="Parking Difficulty" value="62%" />
-      <KpiCard icon="◒" label="EV / Hybrid Share" value="24%" />
+    <section className="evidence-panel evidence-status">
+      <div><span className={`status-dot ${acs.status}`} /> <b>Pasadena contextual baseline:</b> {acs.status === "ready" ? "connected to Census ACS" : acs.status === "loading" ? "loading official ACS data…" : "official ACS request unavailable"}</div>
+      <div><span className="status-dot unavailable" /> <b>PCC institutional baseline:</b> awaiting approved PCC record import or baseline survey.</div>
+      <div><span className="status-dot unavailable" /> <b>Relay Rider current observation:</b> awaiting a locked PCC observation window.</div>
+      {acs.message && <small>{acs.message}</small>}
+    </section>
+
+    <section className="evidence-kpi-grid" aria-label="Evidence readiness">
+      {pccInstitutionalMetrics.map((metric) => <MetricCard key={metric.key} metric={metric} />)}
     </section>
 
     <section className="evidence-two-col">
-      <article className="evidence-panel compare-panel">
-        <div className="panel-title-row"><h2>A. Weekly VMT <small>(miles)</small></h2><span className="change-pill">↓ -8.4%</span></div>
-        <div className="compare-body"><dl><div><dt><i className="dot blue" />Baseline</dt><dd>18,420 mi</dd></div><div><dt><i className="dot teal" />Current</dt><dd>16,870 mi</dd></div><div><dt><i className="dot purple" />Difference</dt><dd className="purple-text">-1,550 mi</dd></div><div className="compare-divider"><dt>Change</dt><dd><span className="change-pill">-8.4%</span></dd></div></dl><BarPair baseline={18420} current={16870} baselineLabel="18,420" currentLabel="16,870" max={20000} /></div>
+      <article className="evidence-panel">
+        <div className="panel-title-row"><h2>A. Pasadena commute context</h2><span className="method-pill">ACS 2024 5-Year</span></div>
+        <p className="panel-copy">Official residence-based context for Pasadena. These estimates are useful for comparison, but they are not PCC commuter behavior.</p>
+        {acs.status === "ready" ? <div className="context-list">{contextMode.map((metric) => <div key={metric.key}><span>{metric.label.replace("Pasadena ", "")}</span><strong>{valueOf(metric)}</strong><small>Official estimate · context only</small></div>)}</div> : <div className="empty-state">Official ACS context is unavailable in this session. Configure <code>VITE_CENSUS_API_KEY</code> if the Census endpoint requires a key.</div>}
       </article>
 
-      <article className="evidence-panel compare-panel">
-        <div className="panel-title-row"><h2>B. Modeled CO₂e <small>(t/week)</small></h2><span className="method-pill">Modeled estimate</span></div>
-        <div className="compare-body"><dl><div><dt><i className="dot blue" />Baseline</dt><dd>4.2 t/week</dd></div><div><dt><i className="dot teal" />Current</dt><dd>3.9 t/week</dd></div><div><dt><i className="dot purple" />Difference</dt><dd className="purple-text">-0.3 t/week</dd></div><div className="compare-divider"><dt>Method</dt><dd><span className="method-pill">Modeled estimate</span></dd></div></dl><BarPair baseline={4.2} current={3.9} baselineLabel="4.2" currentLabel="3.9" max={5} /></div>
+      <article className="evidence-panel">
+        <div className="panel-title-row"><h2>B. PCC VMT & emissions evidence</h2><span className="method-pill neutral">Awaiting PCC data</span></div>
+        <p className="panel-copy">This panel will become the before/current comparison once PCC commute records or a verified baseline survey are imported.</p>
+        <div className="locked-metrics">
+          <div><span>Baseline weekly VMT</span><b>Not available</b><small>Institution supplied</small></div>
+          <div><span>Current observed weekly VMT</span><b>Not available</b><small>Participant reported</small></div>
+          <div><span>Difference from baseline</span><b>Not available</b><small>Calculated only after comparable periods exist</small></div>
+          <div><span>Modeled CO₂e difference</span><b>Not available</b><small>CARB EMFAC2025 method after VMT verification</small></div>
+        </div>
       </article>
     </section>
 
     <section className="evidence-two-col lower">
-      <article className="evidence-panel commute-panel"><h2>Commute Baseline</h2><div className="commute-body"><div className="donut-wrap"><div className="mode-donut"><span>◎</span></div></div><div className="mode-legend">{modeLegend.map(([label, value, className]) => <div key={label}><span className={`legend-swatch ${className}`} /><b>{label}</b><strong>{value}</strong></div>)}</div><div className="commute-stats"><div><span className="stat-icon">⌖</span><p>Median one-way<br/>commute<strong>8.7 mi</strong></p></div><div><span className="stat-icon green">◷</span><p>Median travel<br/>time<strong>31 min</strong></p></div></div></div></article>
+      <article className="evidence-panel"><h2>Evidence ladder</h2><div className="evidence-ladder">
+        <div className="ready"><b>1. Pasadena context</b><span>ACS / LODES</span><small>Official population estimates</small></div>
+        <div><b>2. PCC baseline</b><span>Institutional import / survey</span><small>Actual PCC cohort</small></div>
+        <div><b>3. Current observation</b><span>Relay Rider participant records</span><small>Day-specific commute behavior</small></div>
+        <div><b>4. VMT difference</b><span>Baseline vs current</span><small>Descriptive comparison</small></div>
+        <div><b>5. Modeled emissions</b><span>CARB EMFAC2025</span><small>Modeled, not certified reduction</small></div>
+      </div></article>
 
-      <article className="evidence-panel corridor-panel"><h2>Corridor Evidence</h2><div className="corridor-table" role="table"><div className="corridor-row header" role="row"><span>Corridor</span><span>Participants</span><span>Baseline Weekly VMT</span><span>Match Previews</span></div>{corridors.map((row) => <div className="corridor-row" role="row" key={row.corridor}><strong>{row.corridor}</strong><span>{row.participants}</span><span>{row.vmt}</span><b>{row.previews}</b></div>)}</div><p className="corridor-note">ⓘ Use for corridor prioritization, not proof of causality.</p></article>
+      <article className="evidence-panel"><h2>Source registry</h2><div className="source-registry">{sourceRegistry.map((source) => <div key={source.id}><b>{source.agency}</b><span>{source.dataset}</span><small>{source.role}</small><a href={source.url} target="_blank" rel="noreferrer">Official source ↗</a></div>)}</div></article>
     </section>
 
-    <section className="evidence-panel confidence"><h2>Evidence Confidence</h2><div className="confidence-grid"><div className="confidence-card official"><b>✓ Official Estimate</b><small>Highest confidence</small></div><div className="confidence-card institution"><b>▥ Institution Supplied</b><small>Verified third-party data</small></div><div className="confidence-card participant"><b>○ Participant Reported</b><small>Self-reported by users</small></div><div className="confidence-card observed"><b>◉ Relay Rider Observed</b><small>Observed platform signals</small></div><div className="confidence-card modeled"><b>↗ Relay Rider Modeled</b><small>Model-based estimate</small></div></div></section>
+    <section className="evidence-panel provenance"><h2>Metric provenance</h2><p className="panel-copy">Every metric carries source, vintage, geography, refresh time, methodology, limitations, sample size, and comparability.</p>{allMetrics.length ? allMetrics.map((metric) => <ProvenanceRow key={metric.key} metric={metric} />) : <div className="empty-state">No metrics loaded.</div>}</section>
 
-    <footer className="evidence-footer"><span>▤</span><p>This dashboard is a concept visual for research-grade commute evidence. Baseline and current values are illustrative placeholders.<br/><b>Final metrics should display source, vintage, geography, refresh date, and methodology notes.</b></p></footer>
+    <section className="evidence-panel confidence"><h2>Evidence confidence</h2><div className="confidence-grid"><div className="confidence-card official"><b>✓ Official Estimate</b><small>Government/statistical source</small></div><div className="confidence-card institution"><b>▥ Institution Supplied</b><small>PCC-approved record or survey data</small></div><div className="confidence-card participant"><b>○ Participant Reported</b><small>Self-reported current behavior</small></div><div className="confidence-card observed"><b>◉ Relay Rider Observed</b><small>Platform-generated event or workflow signal</small></div><div className="confidence-card modeled"><b>↗ Relay Rider Modeled</b><small>Derived estimate with versioned method</small></div></div></section>
+
+    <footer className="evidence-footer"><span>▤</span><p><b>Research-grade evidence rule:</b> ACS and LODES provide context; they do not substitute for PCC-specific commute records. VMT and emissions differences remain unavailable until comparable PCC baseline and current observations are verified. Modeled emissions are not certified emissions reductions or carbon offsets.</p></footer>
   </main>;
 }
