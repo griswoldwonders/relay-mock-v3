@@ -1,7 +1,7 @@
 {
-  "scripts/check-mobile-runtime.mjs": "711d912cb8abd52eb36fff55fb051103dfc06b83a2d6c358927ce4b91fadb375",
+  "scripts/check-mobile-runtime.mjs": "ee85738cc2ef889c0b457d8ccac61e017b8c5d16f393e766ec9fb7d11c9aff7f",
   "scripts/prepare-sites-build.mjs": "ea0855bb81a2b0425258ed95cc50f82a35ff95d9b88a30eb946580a6cc98c478",
-  "scripts/update-mobile-runtime-lock.mjs": "2e8bf9de406c7af7710adeeb7bff11a3d1a17585244143ada366ce94312f2592",
+  "scripts/update-mobile-runtime-lock.mjs": "b4e1aa41133f19ba8bb32685b3ec05798b1ceabaf72c328419d545aa60fe1f0b",
   "vite.config.ts": "a4372bbd484bb0fef56e186f12809ff196a24437f63b3dde1fe9e4494d40a8dd",
   "src/App.tsx": "1ab89d243b0b5c970ed59bedae0cbbff38083cb12bf5bcdcbdad91df8420fc7f",
   "src/main.tsx": "e1b6fb8a1226208b0a490335dc52b1e975d0a0b9f79a5405a7f512f197f5e823",
@@ -22,7 +22,7 @@
   "public/assets/iphone/Bezel.png": "ee2514d74d2f75f3541405fa2f20811f159879a66586778cfd8c9c84c44959df",
   "public/assets/iphone/Keyboard.png": "292e2d83d69adaeb663d6a840ce8db8d0a5257710b472c20713e03f56b08ea88",
   "public/assets/android/Pixel10.png": "a87c1250ba20756f5d020b5351a7ae71d663dcfc64aca3a1cd56452e8a05233e",
-  "public/assets/android/Keyboard.png": "6085e50be17ca2705b4351283187be2c5b01b58262c70b90d74b3376efb4adfe",
+  "public/assets/android/Keyboard.png": "6085e50be17ca5b01b58262c70b90d74b3376efb4adfe",
   "public/assets/android/navigation-bar.svg": "9d74d8913eedb154a118dabbb0eea9eada864ede4cbcfbdb8566471aba10b266",
   "public/assets/status/status-icons.svg": "a82efb892a754a8e0c972f0e21233cd21bf5378bb98be58a8f7db35b22ecfbfa",
   "public/assets/status/ios-status-icons.svg": "04f277cd117375574bcd81ca3efec8521cdaf3e56ecb9aecad6dbcf916739591",
