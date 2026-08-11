@@ -1,0 +1,39 @@
+.ops-app {
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.ops-main {
+  min-height: 0;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+.ops-content {
+  min-height: calc(100vh - 69px);
+}
+
+@media (max-width: 780px) {
+  .ops-app {
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ops-main {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .ops-topbar {
+    position: sticky;
+    top: 0;
+  }
+}
