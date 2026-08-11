@@ -43,6 +43,9 @@ export function listEvidenceBaselines(session: SaasSession, organizationId: stri
 export function createEvidenceBaseline(session: SaasSession, input: { organization_id: string; site_id: string; cohort_id?: string | null; source_id?: string | null; name: string; baseline_start: string; baseline_end: string }) {
   return rest<EvidenceBaseline[]>(session, "evidence_baselines", { method: "POST", body: JSON.stringify({ ...input, cohort_id: input.cohort_id ?? null, source_id: input.source_id ?? null, created_by: session.user.id }) });
 }
+export function updateEvidenceBaseline(session: SaasSession, baselineId: string, patch: Partial<Pick<EvidenceBaseline,"status"|"input_record_count"|"valid_record_count"|"blocking_issue_count">>) {
+  return rest<EvidenceBaseline[]>(session, `evidence_baselines?id=eq.${baselineId}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
 export function listObservationPeriods(session: SaasSession, organizationId: string, siteId?: string) {
   return rest<ObservationPeriod[]>(session, `evidence_observation_periods?organization_id=eq.${organizationId}${siteId ? `&site_id=eq.${siteId}` : ""}&select=*&order=created_at.desc`);
 }
@@ -55,6 +58,10 @@ export function listEvidenceMetrics(session: SaasSession, organizationId: string
 export function insertCommuteObservations(session: SaasSession, rows: CommuteObservation[]) {
   if (!rows.length) return Promise.resolve([] as CommuteObservation[]);
   return rest<CommuteObservation[]>(session, "commute_observations", { method: "POST", body: JSON.stringify(rows.map(row => ({ ...row, created_by: session.user.id }))) });
+}
+export function insertValidationIssues(session: SaasSession, args: { organizationId: string; siteId: string; baselineId?: string | null; observationPeriodId?: string | null; issues: ValidationIssue[] }) {
+  if (!args.issues.length) return Promise.resolve([] as unknown[]);
+  return rest<unknown[]>(session, "evidence_validation_issues", { method: "POST", body: JSON.stringify(args.issues.map(issue => ({ organization_id: args.organizationId, site_id: args.siteId, baseline_id: args.baselineId ?? null, observation_period_id: args.observationPeriodId ?? null, commute_observation_id: null, rule_code: issue.code, severity: issue.severity, message: `CSV row ${issue.row}: ${issue.message}`, resolution_hint: issue.severity === "blocking_error" ? "Correct the source row or explicitly exclude it before locking the baseline." : "Review before finalizing the evidence period." }))) });
 }
 export async function lockEvidenceBaseline(session: SaasSession, baselineId: string) {
   return parse<EvidenceBaseline>(await fetch(`${SUPABASE_URL}/rest/v1/rpc/lock_evidence_baseline`, { method: "POST", headers: headers(session.access_token), body: JSON.stringify({ target_baseline: baselineId }) }));
@@ -82,7 +89,7 @@ export function guessFieldMap(headers: string[]): CsvFieldMap {
 }
 
 const MODE_MAP: Record<string, NormalizedMode> = {
-  drive_alone:"drive_alone", single_occupancy_vehicle:"drive_alone", sov:"drive_alone", car:"drive_alone", carpool:"carpool", carpool_2:"carpool", carpool_2_:"carpool", vanpool:"vanpool",
+  drive_alone:"drive_alone", single_occupancy_vehicle:"drive_alone", sov:"drive_alone", car:"drive_alone", carpool:"carpool", carpool_2:"carpool", vanpool:"vanpool",
   bus:"bus", public_bus:"bus", metro_bus:"bus", rail:"rail", metro:"rail", train:"rail", light_rail:"rail", walk:"walk", walking:"walk", bicycle:"bike", bike:"bike", cycling:"bike",
   remote:"remote", telecommute:"remote", work_from_home:"remote", wfh:"remote", compressed_day_off:"compressed_day_off", worked_offsite:"worked_offsite", absent:"absent", other:"other", unknown:"unknown"
 };
