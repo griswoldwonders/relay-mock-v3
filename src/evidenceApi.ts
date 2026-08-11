@@ -57,7 +57,7 @@ export function listEvidenceMetrics(session: SaasSession, organizationId: string
 }
 export function insertCommuteObservations(session: SaasSession, rows: CommuteObservation[]) {
   if (!rows.length) return Promise.resolve([] as CommuteObservation[]);
-  return rest<CommuteObservation[]>(session, "commute_observations", { method: "POST", body: JSON.stringify(rows.map(row => ({ ...row, created_by: session.user.id }))) });
+  return rest<CommuteObservation[]>(session, "evidence_commute_observations", { method: "POST", body: JSON.stringify(rows.map(row => ({ ...row, created_by: session.user.id }))) });
 }
 export function insertValidationIssues(session: SaasSession, args: { organizationId: string; siteId: string; baselineId?: string | null; observationPeriodId?: string | null; issues: ValidationIssue[] }) {
   if (!args.issues.length) return Promise.resolve([] as unknown[]);
