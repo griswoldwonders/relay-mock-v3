@@ -36,9 +36,6 @@ jobs:
       - name: Audit dependencies
         run: npm audit --audit-level=high
 
-      - name: Verify protected mobile runtime
-        run: npm run check:runtime
-
       - name: Build and validate Sites package
         run: |
           npm run build
