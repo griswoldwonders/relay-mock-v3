@@ -1,4 +1,5 @@
 import OperationalSaasWorkspace from "./OperationalSaasWorkspace";
+import "./operational-scroll-fix.css";
 
 /**
  * Default product surface for the Relay Rider demonstration environment.
