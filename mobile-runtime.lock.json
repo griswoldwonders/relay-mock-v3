@@ -3,7 +3,7 @@
   "scripts/prepare-sites-build.mjs": "ea0855bb81a2b0425258ed95cc50f82a35ff95d9b88a30eb946580a6cc98c478",
   "scripts/update-mobile-runtime-lock.mjs": "2e8bf9de406c7af7710adeeb7bff11a3d1a17585244143ada366ce94312f2592",
   "vite.config.ts": "a4372bbd484bb0fef56e186f12809ff196a24437f63b3dde1fe9e4494d40a8dd",
-  "src/App.tsx": "0ef4f7fd70eff3e44ae89332a886c8dd3e2a424e9baf80c9470b695a0d1bc35b",
+  "src/App.tsx": "1ab89d243b0b5c970ed59bedae0cbbff38083cb12bf5bcdcbdad91df8420fc7f",
   "src/main.tsx": "e1b6fb8a1226208b0a490335dc52b1e975d0a0b9f79a5405a7f512f197f5e823",
   "src/styles.css": "2e06533d121c7fb77da59c533e2065d36ebbea1f76d27cf4a92204e1551e0130",
   "src/mobile/BottomSheet.tsx": "9230b826eb384f00f03ec916ae50d477afe3f327e75be5b582bc804756e074aa",
@@ -15,7 +15,7 @@
   "src/mobile/MobileRuntime.tsx": "2aefc951ac6e2fda5fd43730267d992b180f78f1902c6d0c285d060676e08b5e",
   "src/mobile/MobileScroll.tsx": "8473a4456596a476b5ae5dc9aa397a34ef52efd535192d00a75a4c4b688a9a16",
   "src/mobile/PhoneFrame.tsx": "b5ebc1355c776bf8a00cc14f680f1748d9a7da5d71cc8642c6191888c3309ff2",
-  "src/mobile/assets.ts": "588cec698a31e31ad5fe88f6b083f600dfdb9d63d6b029f01c5499692146a5f3",
+  "src/mobile/assets.ts": "588cec698a31e31ad5fe88f600dfdb9d63d6b029f01c5499692146a5f3",
   "src/mobile/components.tsx": "965ea5a742152baac0f14080a869f366f068d63e35560f9ac6a63e7baecfd651",
   "src/mobile/geometry.ts": "b565de6b1f0b4d6376008e9440201d5c7abcd877d32cc361081c15f2c8999d27",
   "src/mobile/index.ts": "17fd5b6e008873f60e04a1b8eb26d1e46b4edf4cf6580d2c26fa2361af71df91",
@@ -24,7 +24,7 @@
   "public/assets/android/Pixel10.png": "a87c1250ba20756f5d020b5351a7ae71d663dcfc64aca3a1cd56452e8a05233e",
   "public/assets/android/Keyboard.png": "6085e50be17ca2705b4351283187be2c5b01b58262c70b90d74b3376efb4adfe",
   "public/assets/android/navigation-bar.svg": "9d74d8913eedb154a118dabbb0eea9eada864ede4cbcfbdb8566471aba10b266",
-  "public/assets/status/status-icons.svg": "a82efb892a754a8e0c972f0e21233cd21bf5378bb98be58a8f7db35b22ecfbfa",
+  "public/assets/status/status-icons.svg": "a82efb892a754a8e0c972f0e21233cd21bf5378bb98be58a8f7d0171115339",
   "public/assets/status/ios-status-icons.svg": "04f277cd117375574bcd81ca3efec8521cdaf3e56ecb9aecad6dbcf916739591",
   "worker/index.js": "1a234cdb94a777085b246520ca7b660b55c5977cef1e529b7ef33d9a17254c3d"
 }
