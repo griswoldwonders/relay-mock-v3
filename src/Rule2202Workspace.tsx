@@ -1,227 +1,207 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./rule-2202-workspace.css";
+import {
+  listOrganizations, listSites, restoreSession, signIn, signOut,
+  type Organization, type OrganizationSite, type SaasSession,
+} from "./saasApi";
+import {
+  createReportingYear, getEmployeePopulation, listCalculationRuns, listCompliancePackages,
+  listReportingYears, listValidationIssues, saveEmployeePopulation, updateReportingYear,
+  type Rule2202CalculationRun, type Rule2202CompliancePackage, type Rule2202EmployeePopulation,
+  type Rule2202ReportingYear, type Rule2202ValidationIssue,
+} from "./rule2202Api";
 
 type Status = "ready" | "review" | "blocked" | "not_started";
 type StepId = "worksite" | "population" | "pathway" | "validation" | "metrics" | "package";
 type VmtPathway = "survey" | "zip" | null;
 type ValidationFilter = "all" | "blocking" | "review" | "resolved";
 
-type ValidationRule = {
-  severity: "blocking" | "review";
-  title: string;
-  detail: string;
-  field: string;
-};
-
-const modes = [
-  "Zero Emission Vehicle (Electric/Fuel cell)",
-  "Bus",
-  "Rail/Train",
-  "Walk",
-  "Bicycle",
-  "Telecommute",
-  "Noncommuting",
-  "Drive alone",
-  "Motorcycle",
-  "2–15 persons in vehicle",
-  "Compressed work week day off",
-  "Vacation / Sick / Other day off",
-];
-
-const validationRules: ValidationRule[] = [
-  { severity: "blocking", title: "Missing commute mode", detail: "Required employee-day commute mode is absent.", field: "commute_mode" },
-  { severity: "blocking", title: "Missing one-way distance", detail: "Required for survey-based VMT input.", field: "one_way_miles" },
-  { severity: "blocking", title: "Invalid or missing ZIP", detail: "Required for ZIP-based VMT input.", field: "home_zip" },
-  { severity: "review", title: "Duplicate employee-day", detail: "Potential duplicate needs administrator review.", field: "employee_day" },
-  { severity: "review", title: "Unrecognized AQMD mode", detail: "Source value needs normalization to an AQMD reporting mode.", field: "commute_mode" },
-  { severity: "review", title: "Population coverage mismatch", detail: "Survey/import population does not reconcile to the confirmed reporting population.", field: "population" },
-];
+const informationalRules = [
+  ["blocking", "Missing commute mode", "commute_mode", "Required employee-day commute mode is absent."],
+  ["blocking", "Missing one-way distance", "one_way_miles", "Required for survey-based VMT input."],
+  ["blocking", "Invalid or missing ZIP", "home_zip", "Required for ZIP-based VMT input."],
+  ["review", "Duplicate employee-day", "employee_day", "Potential duplicate needs administrator review."],
+  ["review", "Unrecognized AQMD mode", "commute_mode", "Source value needs normalization."],
+] as const;
 
 export default function Rule2202Workspace() {
   const [activeStep, setActiveStep] = useState<StepId>("worksite");
-  const [pathway, setPathway] = useState<VmtPathway>(null);
+  const [session, setSession] = useState<SaasSession | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [sites, setSites] = useState<OrganizationSite[]>([]);
+  const [organizationId, setOrganizationId] = useState("");
+  const [siteId, setSiteId] = useState("");
+  const [years, setYears] = useState<Rule2202ReportingYear[]>([]);
+  const [yearId, setYearId] = useState("");
   const [reportingYear, setReportingYear] = useState("2026");
-  const [worksiteConfirmed, setWorksiteConfirmed] = useState(false);
-  const [populationConfirmed, setPopulationConfirmed] = useState(false);
+  const [population, setPopulation] = useState<Rule2202EmployeePopulation | null>(null);
+  const [issues, setIssues] = useState<Rule2202ValidationIssue[]>([]);
+  const [runs, setRuns] = useState<Rule2202CalculationRun[]>([]);
+  const [packages, setPackages] = useState<Rule2202CompliancePackage[]>([]);
   const [validationFilter, setValidationFilter] = useState<ValidationFilter>("all");
-  const [packageReviewed, setPackageReviewed] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const readiness = useMemo(() => {
-    const worksite: Status = worksiteConfirmed ? "ready" : "review";
-    const population: Status = populationConfirmed ? "ready" : "blocked";
-    const pathwayStatus: Status = pathway ? "ready" : "not_started";
-    const validation: Status = populationConfirmed && pathway ? "review" : "not_started";
-    const metrics: Status = populationConfirmed && pathway ? "blocked" : "not_started";
-    const pkg: Status = packageReviewed ? "ready" : "not_started";
-    return [
-      { id: "worksite" as StepId, label: "Worksite profile", status: worksite, detail: worksiteConfirmed ? "Worksite reporting profile confirmed for this session." : "Confirm worksite identity, business classification, ETC contact and annual due date." },
-      { id: "population" as StepId, label: "Employee population", status: population, detail: populationConfirmed ? "Reporting population marked confirmed for this session." : "No verified employer population dataset is connected." },
-      { id: "pathway" as StepId, label: "Survey / ZIP pathway", status: pathwayStatus, detail: pathway ? `${pathway === "survey" ? "AVR survey" : "Anonymized ZIP"} pathway selected.` : "Choose the AQMD AVR survey workflow or anonymized ZIP-code VMT workflow." },
-      { id: "validation" as StepId, label: "Validation", status: validation, detail: populationConfirmed && pathway ? "Validation rules are ready; no employer records are connected yet." : "Validation becomes available after population and pathway setup." },
-      { id: "metrics" as StepId, label: "AVR & weekly VMT", status: metrics, detail: populationConfirmed && pathway ? "Calculation is blocked until validated employer records exist." : "Metrics require a confirmed population and VMT pathway." },
-      { id: "package" as StepId, label: "Compliance package", status: pkg, detail: packageReviewed ? "Package checklist reviewed for this session." : "Review package requirements after required inputs are validated." },
-    ];
-  }, [packageReviewed, pathway, populationConfirmed, worksiteConfirmed]);
+  const selectedYear = years.find((item) => item.id === yearId) ?? null;
+  const selectedSite = sites.find((item) => item.id === siteId) ?? null;
+  const pathway: VmtPathway = selectedYear?.vmt_pathway === "avr_survey" ? "survey" : selectedYear?.vmt_pathway === "anonymized_zip" ? "zip" : null;
+
+  useEffect(() => { restoreSession().then((value) => { if (value) setSession(value); }); }, []);
+  useEffect(() => {
+    if (!session) return;
+    listOrganizations(session).then((rows) => { setOrganizations(rows); if (!organizationId && rows[0]) setOrganizationId(rows[0].id); }).catch((e) => setMessage(e.message));
+  }, [session]);
+  useEffect(() => {
+    if (!session || !organizationId) { setSites([]); setSiteId(""); return; }
+    listSites(session, organizationId).then((rows) => { setSites(rows); if (!rows.some((s) => s.id === siteId)) setSiteId(rows[0]?.id ?? ""); }).catch((e) => setMessage(e.message));
+  }, [session, organizationId]);
+  useEffect(() => {
+    if (!session || !organizationId || !siteId) { setYears([]); setYearId(""); return; }
+    listReportingYears(session, organizationId, siteId).then((rows) => {
+      setYears(rows);
+      const current = rows.find((r) => String(r.reporting_year) === reportingYear) ?? rows[0];
+      setYearId(current?.id ?? "");
+      if (current) setReportingYear(String(current.reporting_year));
+    }).catch((e) => setMessage(e.message));
+  }, [session, organizationId, siteId]);
+  useEffect(() => { if (session && yearId) refreshYearData(session, yearId); else clearYearData(); }, [session, yearId]);
+
+  async function refreshYearData(activeSession = session, activeYearId = yearId) {
+    if (!activeSession || !activeYearId) return;
+    try {
+      const [p, v, c, pkgs] = await Promise.all([
+        getEmployeePopulation(activeSession, activeYearId), listValidationIssues(activeSession, activeYearId),
+        listCalculationRuns(activeSession, activeYearId), listCompliancePackages(activeSession, activeYearId),
+      ]);
+      setPopulation(p[0] ?? null); setIssues(v); setRuns(c); setPackages(pkgs);
+    } catch (e) { setMessage((e as Error).message); }
+  }
+  function clearYearData() { setPopulation(null); setIssues([]); setRuns([]); setPackages([]); }
+
+  async function connect() {
+    setBusy(true); setMessage("");
+    try { const next = await signIn(email, password); setSession(next); setPassword(""); setMessage("Secure institutional session connected."); }
+    catch (e) { setMessage((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function disconnect() { await signOut(session); setSession(null); setOrganizations([]); setSites([]); setYears([]); setOrganizationId(""); setSiteId(""); setYearId(""); clearYearData(); }
+
+  async function ensureYear() {
+    if (!session || !organizationId || !siteId) return;
+    const existing = years.find((r) => r.reporting_year === Number(reportingYear));
+    if (existing) { setYearId(existing.id); return; }
+    setBusy(true);
+    try {
+      const rows = await createReportingYear(session, { organization_id: organizationId, site_id: siteId, reporting_year: Number(reportingYear) });
+      const created = rows[0]; if (created) { setYears((old) => [created, ...old]); setYearId(created.id); setMessage(`${reportingYear} reporting record created.`); }
+    } catch (e) { setMessage((e as Error).message); } finally { setBusy(false); }
+  }
+
+  async function patchYear(patch: Parameters<typeof updateReportingYear>[2]) {
+    if (!session || !yearId) return;
+    setBusy(true);
+    try { const rows = await updateReportingYear(session, yearId, patch); const updated = rows[0]; if (updated) setYears((old) => old.map((r) => r.id === updated.id ? updated : r)); setMessage("Reporting record saved."); }
+    catch (e) { setMessage((e as Error).message); } finally { setBusy(false); }
+  }
+
+  const openBlockingIssues = issues.filter((i) => i.status === "open" && i.severity === "blocking");
+  const latestVmt = runs.find((r) => r.calculation_type === "weekly_vmt" && r.status === "succeeded") ?? null;
+  const latestAvr = runs.find((r) => r.calculation_type === "avr" && r.status === "succeeded") ?? null;
+  const worksiteReady = Boolean(selectedSite && selectedYear?.business_classification && selectedYear?.etc_contact_name && selectedYear?.annual_due_date);
+  const populationReady = Boolean(population?.confirmed_at && population.total_employee_count != null && population.peak_window_employee_count != null);
+  const validationReady = populationReady && Boolean(pathway) && openBlockingIssues.length === 0 && issues.length > 0;
+  const metricsReady = Boolean(latestVmt && (pathway === "zip" || latestAvr));
+  const packageReady = worksiteReady && populationReady && Boolean(pathway) && validationReady && metricsReady;
+
+  const readiness = useMemo(() => [
+    { id: "worksite" as StepId, label: "Worksite profile", status: worksiteReady ? "ready" : selectedYear ? "review" : "not_started" as Status, detail: worksiteReady ? "Required reporting profile fields are persisted." : "Confirm worksite, business classification, ETC contact and annual due date." },
+    { id: "population" as StepId, label: "Employee population", status: populationReady ? "ready" : selectedYear ? "blocked" : "not_started" as Status, detail: populationReady ? "Verified employee population snapshot is persisted." : "Persist and confirm the worksite employee population source." },
+    { id: "pathway" as StepId, label: "VMT pathway", status: pathway ? "ready" : selectedYear ? "not_started" : "not_started" as Status, detail: pathway ? `${pathway === "survey" ? "AVR survey" : "Anonymized ZIP"} pathway is saved.` : "Select the AQMD VMT input pathway." },
+    { id: "validation" as StepId, label: "Validation", status: validationReady ? "ready" : issues.length ? "blocked" : "not_started" as Status, detail: issues.length ? `${openBlockingIssues.length} open blocking issue(s).` : "Validation history appears after real employee input is processed." },
+    { id: "metrics" as StepId, label: "AVR & weekly VMT", status: metricsReady ? "ready" : pathway ? "blocked" : "not_started" as Status, detail: metricsReady ? "Successful calculation run is persisted." : "No successful AQMD calculation run is persisted." },
+    { id: "package" as StepId, label: "Compliance package", status: packageReady ? "ready" : "blocked" as Status, detail: packageReady ? "All persisted prerequisites are satisfied." : "Package remains blocked until persisted prerequisites pass." },
+  ], [worksiteReady, populationReady, pathway, validationReady, issues.length, openBlockingIssues.length, metricsReady, packageReady, selectedYear]);
 
   const passedChecks = readiness.filter((item) => item.status === "ready").length;
   const progress = Math.round((passedChecks / readiness.length) * 100);
-  const filteredRules = validationRules.filter((rule) => validationFilter === "all" || validationFilter === rule.severity);
 
   return <div className="r2202-stack">
     <section className="r2202-hero">
-      <div>
-        <span className="ops-eyebrow">SOUTH COAST AQMD · RULE 2202</span>
-        <h2>Interactive compliance workbench.</h2>
-        <p>Move through worksite setup, reporting population, VMT pathway selection, validation, compliance metrics and package readiness. This interface does not fabricate employer records or claim that any filing has been submitted.</p>
-      </div>
-      <div className="r2202-status-card">
-        <small>{reportingYear} REPORTING READINESS</small>
-        <strong>{passedChecks} / {readiness.length}</strong>
-        <span>workflow checks ready</span>
-        <div className="r2202-progress"><i style={{ width: `${progress}%` }} /></div>
-        <p>{progress === 100 ? "Workflow setup is complete for this session." : "Complete the highlighted workflow steps before preparing a compliance package."}</p>
-      </div>
+      <div><span className="ops-eyebrow">SOUTH COAST AQMD · RULE 2202</span><h2>Persistent compliance workbench.</h2><p>Rule 2202 records now use the existing tenant-scoped institutional model. Worksite configuration reuses organization sites; reporting years, employee population snapshots, validation issues, calculation runs and compliance packages persist in the backend when an authorized institutional session is connected.</p></div>
+      <div className="r2202-status-card"><small>{reportingYear} REPORTING READINESS</small><strong>{passedChecks} / {readiness.length}</strong><span>persisted checks ready</span><div className="r2202-progress"><i style={{ width: `${progress}%` }} /></div><p>{session ? "Readiness is derived from saved records, not session toggles." : "Public view only. Connect an authorized institutional session to create or update records."}</p></div>
     </section>
 
-    <section className="r2202-stepper" aria-label="Rule 2202 workflow">
-      {readiness.map((item, index) => <button key={item.id} className={activeStep === item.id ? "active" : ""} onClick={() => setActiveStep(item.id)}>
-        <span className={`r2202-step-dot ${item.status}`}>{index + 1}</span>
-        <span><strong>{item.label}</strong><small>{formatStatus(item.status)}</small></span>
-      </button>)}
-    </section>
+    <PersistenceBar session={session} email={email} password={password} setEmail={setEmail} setPassword={setPassword} connect={connect} disconnect={disconnect} busy={busy} organizations={organizations} sites={sites} organizationId={organizationId} siteId={siteId} setOrganizationId={setOrganizationId} setSiteId={setSiteId} message={message} />
+
+    <section className="r2202-stepper" aria-label="Rule 2202 workflow">{readiness.map((item, index) => <button key={item.id} className={activeStep === item.id ? "active" : ""} onClick={() => setActiveStep(item.id)}><span className={`r2202-step-dot ${item.status}`}>{index + 1}</span><span><strong>{item.label}</strong><small>{formatStatus(item.status)}</small></span></button>)}</section>
 
     <section className="ops-panel r2202-workbench-panel">
-      {activeStep === "worksite" && <WorksiteStep reportingYear={reportingYear} setReportingYear={setReportingYear} confirmed={worksiteConfirmed} setConfirmed={setWorksiteConfirmed} />}
-      {activeStep === "population" && <PopulationStep confirmed={populationConfirmed} setConfirmed={setPopulationConfirmed} />}
-      {activeStep === "pathway" && <PathwayStep pathway={pathway} setPathway={setPathway} />}
-      {activeStep === "validation" && <ValidationStep pathway={pathway} filter={validationFilter} setFilter={setValidationFilter} rules={filteredRules} />}
-      {activeStep === "metrics" && <MetricsStep pathway={pathway} populationConfirmed={populationConfirmed} />}
-      {activeStep === "package" && <PackageStep pathway={pathway} worksiteConfirmed={worksiteConfirmed} populationConfirmed={populationConfirmed} reviewed={packageReviewed} setReviewed={setPackageReviewed} />}
+      {activeStep === "worksite" && <WorksiteStep sessionReady={Boolean(session && siteId)} reportingYear={reportingYear} setReportingYear={setReportingYear} selectedSite={selectedSite} selectedYear={selectedYear} ensureYear={ensureYear} patchYear={patchYear} busy={busy} />}
+      {activeStep === "population" && <PopulationStep session={session} organizationId={organizationId} siteId={siteId} selectedYear={selectedYear} population={population} onSaved={() => refreshYearData()} />}
+      {activeStep === "pathway" && <PathwayStep pathway={pathway} canSave={Boolean(session && yearId)} onSelect={(value) => patchYear({ vmt_pathway: value === "survey" ? "avr_survey" : "anonymized_zip", survey_format: value === "survey" ? (selectedYear?.survey_format ?? "five_day") : null })} />}
+      {activeStep === "validation" && <ValidationStep pathway={pathway} issues={issues} filter={validationFilter} setFilter={setValidationFilter} />}
+      {activeStep === "metrics" && <MetricsStep pathway={pathway} population={population} runs={runs} />}
+      {activeStep === "package" && <PackageStep packageReady={packageReady} packages={packages} latestVmt={latestVmt} latestAvr={latestAvr} blockingIssues={openBlockingIssues.length} />}
     </section>
 
     <div className="ops-grid two">
-      <section className="ops-panel">
-        <header><h2>Live readiness checklist</h2><span className="r2202-count">{passedChecks}/{readiness.length} ready</span></header>
-        <div className="r2202-readiness compact">
-          {readiness.map((item, index) => <button key={item.id} onClick={() => setActiveStep(item.id)}>
-            <span className={`r2202-check-icon ${item.status}`}>{item.status === "ready" ? "✓" : index + 1}</span>
-            <span><strong>{item.label}</strong><small>{item.detail}</small></span>
-            <b className={`r2202-chip ${item.status}`}>{formatStatus(item.status)}</b>
-          </button>)}
-        </div>
-      </section>
-
-      <section className="ops-panel">
-        <header><h2>Official references</h2></header>
-        <div className="r2202-links">
-          <a href="https://www.aqmd.gov/home/programs/business/r2202-forms-guidelines/compliance-forms" target="_blank" rel="noreferrer"><strong>Annual compliance forms</strong><span>Current South Coast AQMD Rule 2202 forms.</span></a>
-          <a href="https://www.aqmd.gov/home/programs/business/r2202-forms-guidelines/survey-forms" target="_blank" rel="noreferrer"><strong>AVR survey forms</strong><span>Official five-day and seven-day survey formats.</span></a>
-          <a href="https://xappp.aqmd.gov/VMTCalculator" target="_blank" rel="noreferrer"><strong>Rule 2202 VMT Calculator</strong><span>AQMD survey-data and anonymized ZIP-code pathways.</span></a>
-          <a href="https://www.aqmd.gov/home/programs/business/r2202-forms-guidelines" target="_blank" rel="noreferrer"><strong>Rule, guidelines and methodology</strong><span>Current Rule 2202 guidance and methodology resources.</span></a>
-        </div>
-      </section>
+      <section className="ops-panel"><header><h2>Live readiness checklist</h2><span className="r2202-count">{passedChecks}/{readiness.length} ready</span></header><div className="r2202-readiness compact">{readiness.map((item, index) => <button key={item.id} onClick={() => setActiveStep(item.id)}><span className={`r2202-check-icon ${item.status}`}>{item.status === "ready" ? "✓" : index + 1}</span><span><strong>{item.label}</strong><small>{item.detail}</small></span><b className={`r2202-chip ${item.status}`}>{formatStatus(item.status)}</b></button>)}</div></section>
+      <section className="ops-panel"><header><h2>Persistence model</h2></header><div className="r2202-package"><p><span>Worksite</span><b>{selectedSite ? selectedSite.name : "Not connected"}</b></p><p><span>Reporting year record</span><b>{selectedYear ? `${selectedYear.reporting_year} · ${selectedYear.status}` : "Not created"}</b></p><p><span>Employee population</span><b>{population ? "Persisted" : "Not created"}</b></p><p><span>Validation issues</span><b>{issues.length}</b></p><p><span>Calculation runs</span><b>{runs.length}</b></p><p><span>Compliance packages</span><b>{packages.length}</b></p></div><p className="ops-note">All institutional writes require authenticated tenant permissions. The public Pasadena evidence view remains read-only context and is not used as Rule 2202 employee data.</p></section>
     </div>
   </div>;
 }
 
-function WorksiteStep({ reportingYear, setReportingYear, confirmed, setConfirmed }: { reportingYear: string; setReportingYear: (value: string) => void; confirmed: boolean; setConfirmed: (value: boolean) => void }) {
-  return <div className="r2202-step-content">
-    <header><div><span className="ops-eyebrow">STEP 1</span><h2>Worksite profile</h2><p>Define the reporting context before any calculation or package generation.</p></div><b className={`r2202-chip ${confirmed ? "ready" : "review"}`}>{confirmed ? "ready" : "needs review"}</b></header>
-    <div className="r2202-field-grid interactive">
-      <label><span>Reporting year</span><select value={reportingYear} onChange={(e) => setReportingYear(e.currentTarget.value)}><option>2026</option><option>2027</option></select></label>
-      <ReadOnly label="Worksite" value="[NEEDS INSTITUTION INPUT]" />
-      <ReadOnly label="Business classification" value="Not confirmed" />
-      <ReadOnly label="ETC / site contact" value="Not confirmed" />
-      <ReadOnly label="Annual due date" value="Not confirmed" />
-      <ReadOnly label="Applicability" value="Needs worksite review" />
+function PersistenceBar(props: { session: SaasSession | null; email: string; password: string; setEmail: (v:string)=>void; setPassword:(v:string)=>void; connect:()=>void; disconnect:()=>void; busy:boolean; organizations:Organization[]; sites:OrganizationSite[]; organizationId:string; siteId:string; setOrganizationId:(v:string)=>void; setSiteId:(v:string)=>void; message:string }) {
+  return <section className="ops-panel r2202-persistence"><header><div><h2>Secure institutional persistence</h2><p>Optional in the public demo; required for operational worksite records.</p></div><b className={`r2202-chip ${props.session ? "ready" : "review"}`}>{props.session ? "connected" : "read only"}</b></header>
+    {!props.session ? <div className="r2202-login-row"><label><span>Email</span><input type="email" value={props.email} onChange={(e)=>props.setEmail(e.currentTarget.value)} /></label><label><span>Password</span><input type="password" value={props.password} onChange={(e)=>props.setPassword(e.currentTarget.value)} /></label><button className="primary" disabled={props.busy || !props.email || !props.password} onClick={props.connect}>Connect workspace</button></div> : <div className="r2202-login-row"><label><span>Organization</span><select value={props.organizationId} onChange={(e)=>props.setOrganizationId(e.currentTarget.value)}>{props.organizations.map((o)=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label><label><span>Worksite</span><select value={props.siteId} onChange={(e)=>props.setSiteId(e.currentTarget.value)}>{props.sites.map((s)=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><button className="ghost" onClick={props.disconnect}>Disconnect</button></div>}
+    {props.message && <p className="r2202-system-message">{props.message}</p>}
+  </section>;
+}
+
+function WorksiteStep({ sessionReady, reportingYear, setReportingYear, selectedSite, selectedYear, ensureYear, patchYear, busy }: { sessionReady:boolean; reportingYear:string; setReportingYear:(v:string)=>void; selectedSite:OrganizationSite|null; selectedYear:Rule2202ReportingYear|null; ensureYear:()=>void; patchYear:(p:Parameters<typeof updateReportingYear>[2])=>void; busy:boolean }) {
+  const [classification, setClassification] = useState(selectedYear?.business_classification ?? "");
+  const [etcName, setEtcName] = useState(selectedYear?.etc_contact_name ?? "");
+  const [etcEmail, setEtcEmail] = useState(selectedYear?.etc_contact_email ?? "");
+  const [dueDate, setDueDate] = useState(selectedYear?.annual_due_date ?? "");
+  useEffect(()=>{ setClassification(selectedYear?.business_classification ?? ""); setEtcName(selectedYear?.etc_contact_name ?? ""); setEtcEmail(selectedYear?.etc_contact_email ?? ""); setDueDate(selectedYear?.annual_due_date ?? ""); },[selectedYear?.id]);
+  return <div className="r2202-step-content"><header><div><span className="ops-eyebrow">STEP 1</span><h2>Worksite & reporting year</h2><p>Create an annual compliance record under an existing institutional worksite.</p></div></header>
+    <div className="r2202-field-grid interactive"><label><span>Reporting year</span><select value={reportingYear} onChange={(e)=>setReportingYear(e.currentTarget.value)}><option>2026</option><option>2027</option><option>2028</option></select></label><ReadOnly label="Worksite" value={selectedSite?.name ?? "Connect institutional worksite"} />
+      {selectedYear && <><label><span>Business classification</span><input value={classification} onChange={(e)=>setClassification(e.currentTarget.value)} /></label><label><span>ETC / site contact</span><input value={etcName} onChange={(e)=>setEtcName(e.currentTarget.value)} /></label><label><span>ETC email</span><input type="email" value={etcEmail} onChange={(e)=>setEtcEmail(e.currentTarget.value)} /></label><label><span>Annual due date</span><input type="date" value={dueDate} onChange={(e)=>setDueDate(e.currentTarget.value)} /></label></>}
     </div>
-    <label className="r2202-confirm"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.currentTarget.checked)} /><span><strong>Mark worksite profile reviewed</strong><small>Session-only prototype control. It does not save or certify an AQMD filing.</small></span></label>
+    {!selectedYear ? <button className="primary" disabled={!sessionReady || busy} onClick={ensureYear}>Create {reportingYear} reporting record</button> : <button className="primary" disabled={busy} onClick={()=>patchYear({ business_classification:classification||null, etc_contact_name:etcName||null, etc_contact_email:etcEmail||null, annual_due_date:dueDate||null, status:"in_progress" })}>Save worksite profile</button>}
   </div>;
 }
 
-function PopulationStep({ confirmed, setConfirmed }: { confirmed: boolean; setConfirmed: (value: boolean) => void }) {
-  return <div className="r2202-step-content">
-    <header><div><span className="ops-eyebrow">STEP 2</span><h2>Employee reporting population</h2><p>Rule 2202 metrics must be based on a verified employer worksite population, not Pasadena public context.</p></div><b className={`r2202-chip ${confirmed ? "ready" : "blocked"}`}>{confirmed ? "ready" : "blocked"}</b></header>
-    <div className="r2202-empty-state"><strong>No verified employer population is connected.</strong><p>Connect an approved employee roster or governed commute dataset before displaying employee counts, survey coverage, AVR or weekly VMT.</p></div>
-    <label className="r2202-confirm"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.currentTarget.checked)} /><span><strong>Prototype: mark population source reviewed</strong><small>Use only for UI testing. Production must require a persisted, provenance-tagged employer source.</small></span></label>
+function PopulationStep({ session, organizationId, siteId, selectedYear, population, onSaved }: { session:SaasSession|null; organizationId:string; siteId:string; selectedYear:Rule2202ReportingYear|null; population:Rule2202EmployeePopulation|null; onSaved:()=>void }) {
+  const [total, setTotal] = useState(population?.total_employee_count?.toString() ?? ""); const [peak, setPeak] = useState(population?.peak_window_employee_count?.toString() ?? ""); const [source, setSource] = useState(population?.source_label ?? ""); const [asOf, setAsOf] = useState(population?.as_of_date ?? ""); const [busy, setBusy] = useState(false);
+  useEffect(()=>{ setTotal(population?.total_employee_count?.toString() ?? ""); setPeak(population?.peak_window_employee_count?.toString() ?? ""); setSource(population?.source_label ?? ""); setAsOf(population?.as_of_date ?? ""); },[population?.id]);
+  async function save(confirmed:boolean){ if(!session||!selectedYear)return; setBusy(true); try { await saveEmployeePopulation(session,{ organization_id:organizationId, site_id:siteId, reporting_year_id:selectedYear.id, total_employee_count:total?Number(total):null, peak_window_employee_count:peak?Number(peak):null, source_id:null, source_label:source||null, as_of_date:asOf||null, confirmed }); onSaved(); } finally { setBusy(false); } }
+  return <div className="r2202-step-content"><header><div><span className="ops-eyebrow">STEP 2</span><h2>Employee reporting population</h2><p>Persist the employer-supplied population snapshot and its provenance. Do not use Pasadena ACS or student counts here.</p></div><b className={`r2202-chip ${population?.confirmed_at ? "ready" : "blocked"}`}>{population?.confirmed_at ? "confirmed" : "not confirmed"}</b></header>
+    <div className="r2202-field-grid interactive"><label><span>Total employees</span><input type="number" min="0" value={total} onChange={(e)=>setTotal(e.currentTarget.value)} /></label><label><span>Peak-window employees</span><input type="number" min="0" value={peak} onChange={(e)=>setPeak(e.currentTarget.value)} /></label><label><span>Source label</span><input value={source} onChange={(e)=>setSource(e.currentTarget.value)} placeholder="e.g. HR roster export" /></label><label><span>As-of date</span><input type="date" value={asOf} onChange={(e)=>setAsOf(e.currentTarget.value)} /></label></div>
+    <div className="r2202-inline-actions"><button className="ghost" disabled={!selectedYear||busy} onClick={()=>save(false)}>Save draft</button><button className="primary" disabled={!selectedYear||busy||!total||!peak||!source||!asOf} onClick={()=>save(true)}>Save & confirm source</button></div>
   </div>;
 }
 
-function PathwayStep({ pathway, setPathway }: { pathway: VmtPathway; setPathway: (value: VmtPathway) => void }) {
-  return <div className="r2202-step-content">
-    <header><div><span className="ops-eyebrow">STEP 3</span><h2>Select the VMT input pathway</h2><p>The rest of the workflow changes based on the selected AQMD pathway.</p></div><b className={`r2202-chip ${pathway ? "ready" : "not_started"}`}>{pathway ? "selected" : "not started"}</b></header>
-    <div className="r2202-path-selector">
-      <button className={pathway === "survey" ? "selected" : ""} onClick={() => setPathway("survey")}>
-        <span className="r2202-path-letter">A</span><div><strong>AVR survey pathway</strong><p>Use completed 5-day or 7-day employee survey records with commute mode and required one-way mileage inputs.</p><small>{pathway === "survey" ? "Selected" : "Choose pathway"}</small></div>
-      </button>
-      <button className={pathway === "zip" ? "selected" : ""} onClick={() => setPathway("zip")}>
-        <span className="r2202-path-letter">B</span><div><strong>Anonymized ZIP pathway</strong><p>Use anonymized employee home ZIP codes for the applicable reporting population without names or direct identifiers.</p><small>{pathway === "zip" ? "Selected" : "Choose pathway"}</small></div>
-      </button>
-    </div>
-    {pathway && <div className="r2202-selection-summary"><span>Selected workflow</span><strong>{pathway === "survey" ? "AVR survey → validation → AVR/VMT" : "ZIP population → ZIP validation → VMT"}</strong></div>}
+function PathwayStep({ pathway, canSave, onSelect }: { pathway:VmtPathway; canSave:boolean; onSelect:(v:Exclude<VmtPathway,null>)=>void }) { return <div className="r2202-step-content"><header><div><span className="ops-eyebrow">STEP 3</span><h2>Select and persist VMT pathway</h2><p>The selected AQMD pathway is stored on the annual reporting record.</p></div></header><div className="r2202-path-selector"><button disabled={!canSave} className={pathway==="survey"?"selected":""} onClick={()=>onSelect("survey")}><span className="r2202-path-letter">A</span><div><strong>AVR survey pathway</strong><p>5-day or 7-day employee survey records with required commute mode and mileage inputs.</p><small>{pathway==="survey"?"Saved selection":"Choose pathway"}</small></div></button><button disabled={!canSave} className={pathway==="zip"?"selected":""} onClick={()=>onSelect("zip")}><span className="r2202-path-letter">B</span><div><strong>Anonymized ZIP pathway</strong><p>Anonymized home ZIP inputs for the applicable reporting population.</p><small>{pathway==="zip"?"Saved selection":"Choose pathway"}</small></div></button></div></div>; }
+
+function ValidationStep({ pathway, issues, filter, setFilter }: { pathway:VmtPathway; issues:Rule2202ValidationIssue[]; filter:ValidationFilter; setFilter:(v:ValidationFilter)=>void }) {
+  const filtered = issues.filter((i)=>filter==="all" || filter==="resolved" ? (filter==="resolved" ? i.status!=="open" : true) : i.status==="open" && i.severity===filter);
+  return <div className="r2202-step-content"><header><div><span className="ops-eyebrow">STEP 4</span><h2>Persisted validation console</h2><p>Actual validation exceptions appear here after employer inputs are processed.</p></div><b className={`r2202-chip ${issues.some(i=>i.status==="open"&&i.severity==="blocking")?"blocked":"review"}`}>{issues.filter(i=>i.status==="open").length} open</b></header><div className="r2202-validation-toolbar">{(["all","blocking","review","resolved"] as ValidationFilter[]).map((v)=><button key={v} className={filter===v?"active":""} onClick={()=>setFilter(v)}>{v}</button>)}</div>
+    {!pathway && <div className="r2202-empty-state"><strong>Select a VMT pathway first.</strong></div>}
+    {pathway && issues.length===0 && <><div className="r2202-empty-state"><strong>No persisted validation run yet.</strong><p>Zero issues is not treated as a pass until real employee inputs have been validated.</p></div><div className="r2202-reference-rules">{informationalRules.filter((r)=>pathway==="survey"?r[2]!=="home_zip":r[2]!=="one_way_miles").map((r)=><span key={r[1]}>{r[0].toUpperCase()} · {r[1]}</span>)}</div></>}
+    {filtered.length>0 && <div className="r2202-validation-table"><div className="head"><span>Severity</span><span>Issue</span><span>Field</span><span>Status</span></div>{filtered.map((i)=><div className="row" key={i.id}><span><b className={`r2202-chip ${i.severity==="blocking"?"blocked":"review"}`}>{i.severity}</b></span><span><strong>{i.rule_code}</strong><small>{i.message}</small></span><code>{i.field_name??"—"}</code><span>{i.status}</span></div>)}</div>}
   </div>;
 }
 
-function ValidationStep({ pathway, filter, setFilter, rules }: { pathway: VmtPathway; filter: ValidationFilter; setFilter: (value: ValidationFilter) => void; rules: ValidationRule[] }) {
-  const relevant = rules.filter((rule) => pathway === "survey" ? rule.field !== "home_zip" : pathway === "zip" ? rule.field !== "one_way_miles" : true);
-  return <div className="r2202-step-content">
-    <header><div><span className="ops-eyebrow">STEP 4</span><h2>Interactive validation console</h2><p>Review the validation rules that will gate calculation once employer records are connected.</p></div><b className="r2202-chip review">rules ready</b></header>
-    <div className="r2202-validation-toolbar">
-      {(["all", "blocking", "review", "resolved"] as ValidationFilter[]).map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value}</button>)}
-    </div>
-    {!pathway && <div className="r2202-empty-state"><strong>Select a VMT pathway first.</strong><p>The validation console will automatically emphasize the fields required for that pathway.</p></div>}
-    {pathway && filter === "resolved" && <div className="r2202-empty-state"><strong>No resolved employer issues yet.</strong><p>No employer records are connected, so there is no validation history to display.</p></div>}
-    {pathway && filter !== "resolved" && <div className="r2202-validation-table">
-      <div className="head"><span>Severity</span><span>Rule</span><span>Field</span><span>Current issues</span></div>
-      {relevant.map((rule) => <div className="row" key={rule.title}><span><b className={`r2202-chip ${rule.severity === "blocking" ? "blocked" : "review"}`}>{rule.severity}</b></span><span><strong>{rule.title}</strong><small>{rule.detail}</small></span><code>{rule.field}</code><span>0 · data not connected</span></div>)}
-    </div>}
-  </div>;
+function MetricsStep({ pathway, population, runs }: { pathway:VmtPathway; population:Rule2202EmployeePopulation|null; runs:Rule2202CalculationRun[] }) {
+  const vmt=runs.find(r=>r.calculation_type==="weekly_vmt"&&r.status==="succeeded"); const avr=runs.find(r=>r.calculation_type==="avr"&&r.status==="succeeded"); const tele=runs.find(r=>r.calculation_type==="telecommute"&&r.status==="succeeded");
+  return <div className="r2202-step-content"><header><div><span className="ops-eyebrow">STEP 5</span><h2>Versioned calculation runs</h2><p>Metrics appear only from successful persisted calculation runs. This UI does not invent results.</p></div></header><div className="r2202-metric-table"><div className="head"><span>Metric</span><span>Current value</span><span>Source</span><span>Status</span></div><Row metric="Peak-window employee population" value={population?.peak_window_employee_count?.toLocaleString()??"Unavailable"} source={population?.source_label??"Employer worksite records"} status={population?.confirmed_at?"Confirmed":"Not confirmed"}/><Row metric="Average Vehicle Ridership (AVR)" value={avr?.result_value?.toString()??"Unavailable"} source="AQMD survey calculation run" status={pathway==="survey"?(avr?"Succeeded":"No successful run"):"Not required for ZIP pathway"}/><Row metric="Weekly VMT by mode" value={vmt?.result_value!=null?`${vmt.result_value.toLocaleString()} ${vmt.result_unit??"miles"}`:"Unavailable"} source="AQMD VMT calculation run" status={vmt?"Succeeded":"No successful run"}/><Row metric="Telecommute activity" value={tele?.result_value!=null?`${tele.result_value} ${tele.result_unit??""}`:"Unavailable"} source="Employer / survey records" status={tele?"Succeeded":"Not calculated"}/></div></div>;
 }
 
-function MetricsStep({ pathway, populationConfirmed }: { pathway: VmtPathway; populationConfirmed: boolean }) {
-  const canCalculate = Boolean(pathway && populationConfirmed);
-  return <div className="r2202-step-content">
-    <header><div><span className="ops-eyebrow">STEP 5</span><h2>AVR & weekly VMT</h2><p>Metrics remain unavailable until verified, validated employer data exist.</p></div><b className={`r2202-chip ${canCalculate ? "blocked" : "not_started"}`}>{canCalculate ? "awaiting data" : "not ready"}</b></header>
-    <div className="r2202-metric-table">
-      <div className="head"><span>Metric</span><span>Current value</span><span>Source</span><span>Status</span></div>
-      <Row metric="Peak-window employee population" value="Unavailable" source="Employer worksite records" status={populationConfirmed ? "Source reviewed; data not connected" : "Blocked"} />
-      <Row metric="Average Vehicle Ridership (AVR)" value="Unavailable" source="Validated AQMD survey" status={pathway === "survey" ? "Awaiting records" : "Not applicable to selected prototype path"} />
-      <Row metric="Weekly VMT by mode" value="Unavailable" source="AQMD VMT pathway" status={pathway ? "Awaiting validated inputs" : "Pathway not selected"} />
-      <Row metric="Telecommute activity" value="Unavailable" source="Employer / survey records" status="Not calculated" />
-    </div>
-  </div>;
-}
+function PackageStep({ packageReady, packages, latestVmt, latestAvr, blockingIssues }: { packageReady:boolean; packages:Rule2202CompliancePackage[]; latestVmt:Rule2202CalculationRun|null; latestAvr:Rule2202CalculationRun|null; blockingIssues:number }) { return <div className="r2202-step-content"><header><div><span className="ops-eyebrow">STEP 6</span><h2>Compliance-package readiness</h2><p>Readiness is calculated from persisted records. Package generation remains blocked until actual AQMD calculation outputs exist.</p></div><b className={`r2202-chip ${packageReady?"ready":"blocked"}`}>{packageReady?"ready":"blocked"}</b></header><div className="r2202-package interactive"><p><span>Successful weekly VMT run</span><b>{latestVmt?"Ready":"Not ready"}</b></p><p><span>Successful AVR run when survey pathway applies</span><b>{latestAvr?"Available":"Not available"}</b></p><p><span>Open blocking validation issues</span><b>{blockingIssues}</b></p><p><span>Persisted package versions</span><b>{packages.length}</b></p><p><span>Methodology</span><b>AQMD_RULE_2202_2026</b></p></div><button className="primary" disabled={!packageReady}>Prepare review package</button><p className="ops-note">Package creation is intentionally unavailable until the calculation engine writes verified successful runs. A future package action must create a versioned record; it must not imply AQMD submission or approval.</p></div>; }
 
-function PackageStep({ pathway, worksiteConfirmed, populationConfirmed, reviewed, setReviewed }: { pathway: VmtPathway; worksiteConfirmed: boolean; populationConfirmed: boolean; reviewed: boolean; setReviewed: (value: boolean) => void }) {
-  const items = [
-    ["Worksite registration fields", worksiteConfirmed],
-    ["Reporting population source", populationConfirmed],
-    ["VMT pathway selected", Boolean(pathway)],
-    ["Validated weekly VMT values", false],
-    ["Validation exception record", false],
-    ["Methodology + source record", true],
-    ["Administrator review", reviewed],
-  ] as const;
-  const ready = items.every(([, value]) => value);
-  return <div className="r2202-step-content">
-    <header><div><span className="ops-eyebrow">STEP 6</span><h2>Compliance-package readiness</h2><p>Preview every required package component before enabling a review export.</p></div><b className={`r2202-chip ${ready ? "ready" : "blocked"}`}>{ready ? "ready" : "blocked"}</b></header>
-    <div className="r2202-package interactive">
-      {items.map(([label, value]) => <p key={label}><span><i className={value ? "pass" : "wait"}>{value ? "✓" : "○"}</i>{label}</span><b>{value ? "Ready" : "Not ready"}</b></p>)}
-    </div>
-    <label className="r2202-confirm"><input type="checkbox" checked={reviewed} onChange={(e) => setReviewed(e.currentTarget.checked)} /><span><strong>Mark administrator checklist reviewed</strong><small>Session-only prototype state; this does not certify or submit an AQMD filing.</small></span></label>
-    <button className="primary" disabled={!ready}>Prepare review package</button>
-    <p className="ops-note">The production action should remain disabled until verified employer inputs, validation results and calculated reporting values are persisted.</p>
-  </div>;
-}
-
-function ReadOnly({ label, value }: { label: string; value: string }) {
-  return <div><span>{label}</span><strong>{value}</strong></div>;
-}
-
-function Row({ metric, value, source, status }: { metric: string; value: string; source: string; status: string }) {
-  return <div className="row"><span className="strong">{metric}</span><span>{value}</span><span>{source}</span><span>{status}</span></div>;
-}
-
-function formatStatus(status: Status) {
-  return status.replace("_", " ");
-}
+function ReadOnly({label,value}:{label:string;value:string}) { return <div><span>{label}</span><strong>{value}</strong></div>; }
+function Row({metric,value,source,status}:{metric:string;value:string;source:string;status:string}) { return <div className="row"><span className="strong">{metric}</span><span>{value}</span><span>{source}</span><span>{status}</span></div>; }
+function formatStatus(status:Status) { return status.replace("_"," "); }
