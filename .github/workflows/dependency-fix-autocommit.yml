@@ -1,0 +1,46 @@
+name: One-shot Dependency Security Fix
+
+on:
+  push:
+    branches: [feature/tdm-program-ops]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: feature/tdm-program-ops
+          persist-credentials: true
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Apply lockfile-only audit fix
+        run: npm audit fix --package-lock-only
+      - name: Verify audit
+        run: npm audit --audit-level=high
+      - name: Verify build
+        run: npm run build
+      - name: Verify static worker tests
+        run: npm run test:sites
+      - name: Remove one-shot workflows
+        run: rm -f .github/workflows/dependency-fix-probe.yml .github/workflows/dependency-fix-autocommit.yml
+      - name: Commit verified lockfile fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json .github/workflows/dependency-fix-probe.yml .github/workflows/dependency-fix-autocommit.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix high-severity nanoid audit finding"
+          git push origin HEAD:feature/tdm-program-ops
