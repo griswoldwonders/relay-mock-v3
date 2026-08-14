@@ -27,13 +27,16 @@ jobs:
           cache: npm
       - name: Restore base lockfile and apply only patched nanoid
         run: |
+          git fetch origin main --depth=1
           git show origin/main:package-lock.json > package-lock.json
           node - <<'NODE'
           const fs = require('fs');
           const path = 'package-lock.json';
           let text = fs.readFileSync(path, 'utf8');
-          text = text.replace('"version": "3.3.17",\n      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.17.tgz",\n      "integrity": "sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g=="', '"version": "3.3.18",\n      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.18.tgz",\n      "integrity": "sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w=="');
-          fs.writeFileSync(path, text);
+          const oldBlock = '"version": "3.3.17",\n      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.17.tgz",\n      "integrity": "sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g=="';
+          const newBlock = '"version": "3.3.18",\n      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.18.tgz",\n      "integrity": "sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w=="';
+          if (!text.includes(oldBlock)) throw new Error('Expected nanoid 3.3.17 lockfile block not found');
+          fs.writeFileSync(path, text.replace(oldBlock, newBlock));
           NODE
       - name: Verify locked install and audit
         run: |
