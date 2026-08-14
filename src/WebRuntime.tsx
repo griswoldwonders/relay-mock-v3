@@ -10,8 +10,8 @@ import TdmProgramWorkspace from "./TdmProgramWorkspace";
  *
  * Relay Rider's primary product surface is the authenticated institutional
  * TDM administration and operations workspace. Research evidence previews
- * and focused partner-facing demonstrations are routed here so the protected
- * App/mobile runtime entrypoint stays intact.
+ * and focused partner-facing demonstrations, including the program-operations
+ * layer, are routed here so the protected App/mobile runtime entrypoint stays intact.
  */
 export function WebRuntime({ children }: PropsWithChildren) {
   const view = new URLSearchParams(window.location.search).get("view");
