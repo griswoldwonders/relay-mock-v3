@@ -1,0 +1,206 @@
+{
+  "schema_version": "relay-current-state-v1",
+  "audited_at": "2026-08-16",
+  "product_state": "research_beta",
+  "authority": {
+    "institutional_repo": {
+      "repository": "griswoldwonders/relay-mock-v3",
+      "branch": "main",
+      "commit_sha": "3f79f13ca96519693cee634ea355dfef3b854fd4",
+      "deployment_sha_verified": false
+    },
+    "commuter_repo": {
+      "repository": "griswoldwonders/relay-rider-beta-001",
+      "branch": "main",
+      "commit_sha": "e04e6867e5faa556f6af11c2f51ceebefe4272d2",
+      "deployment_sha_verified": false
+    },
+    "marketing_repo": {
+      "repository": "griswoldwonders/relayrider.app",
+      "commit_sha": "58e56cf6c7d1d04fc89a384c3d1579844e2603"
+    },
+    "supabase": {
+      "project_name": "Relay-Rider-RD",
+      "project_ref": "dzrqrqfxcihvufvyctbt",
+      "observed_status": "ACTIVE_HEALTHY",
+      "observed_database_engine": "PostgreSQL 17",
+      "observed_migration_head": "20260811202929:pcc_evidence_engine_v2",
+      "rule2202_persistence_migration_applied": false
+    }
+  },
+  "states": [
+    "LIVE_REACHABLE",
+    "LIVE_PERSISTED",
+    "BACKEND_LIVE_UI_DORMANT",
+    "SPECIAL_VIEW",
+    "PROTOTYPE_SESSION",
+    "CODE_ONLY",
+    "SCHEMA_ONLY_BLUEPRINT",
+    "NOT_IMPLEMENTED",
+    "DEPLOYMENT_UNVERIFIED"
+  ],
+  "capabilities": [
+    {
+      "id": "admin_public_workspace",
+      "surface": "institutional",
+      "state": "LIVE_REACHABLE",
+      "evidence": ["src/App.tsx", "src/WebRuntime.tsx", "src/InstitutionalSaasGateway.tsx", "src/OperationalSaasWorkspace.tsx"]
+    },
+    {
+      "id": "pasadena_public_context",
+      "surface": "institutional",
+      "state": "LIVE_REACHABLE",
+      "evidence": ["src/pasadenaPublicData.ts", "src/pccEvidenceData.ts"]
+    },
+    {
+      "id": "pcc_public_evidence_dashboard",
+      "surface": "institutional",
+      "state": "SPECIAL_VIEW",
+      "route": "?view=pcc-evidence",
+      "evidence": ["src/WebRuntime.tsx", "src/PccEvidenceDashboard.tsx"]
+    },
+    {
+      "id": "pcc_evidence_baseline_workbench",
+      "surface": "institutional",
+      "state": "LIVE_PERSISTED",
+      "route": "?view=pcc-evidence-workbench",
+      "caveat": "Code and required live schema/functions are present, but audited evidence tables contain zero rows and this audit did not execute a real institutional import.",
+      "evidence": ["src/PccEvidenceWorkbench.tsx", "src/evidenceApi.ts", "supabase migration pcc_evidence_engine_v2"]
+    },
+    {
+      "id": "rule2202_public_ui",
+      "surface": "institutional",
+      "state": "LIVE_REACHABLE",
+      "evidence": ["src/Rule2202Workspace.tsx"]
+    },
+    {
+      "id": "rule2202_persistence",
+      "surface": "institutional",
+      "state": "CODE_ONLY",
+      "blocking_reason": "GitHub migration 20260812041000_rule2202_persistence.sql is not present in live Supabase migration history and required rule2202_* tables are absent.",
+      "evidence": ["src/Rule2202Workspace.tsx", "src/rule2202Api.ts", "supabase/migrations/20260812041000_rule2202_persistence.sql"]
+    },
+    {
+      "id": "rule2202_calculation_execution",
+      "surface": "institutional",
+      "state": "NOT_IMPLEMENTED",
+      "blocking_reason": "Mounted UI reads calculation-run records but does not execute the AVR/weekly-VMT calculation workflow end-to-end."
+    },
+    {
+      "id": "rule2202_package_generation",
+      "surface": "institutional",
+      "state": "NOT_IMPLEMENTED"
+    },
+    {
+      "id": "rule2202_aqmd_submission",
+      "surface": "institutional",
+      "state": "NOT_IMPLEMENTED"
+    },
+    {
+      "id": "institutional_roster_commute_ingestion_backend",
+      "surface": "backend",
+      "state": "BACKEND_LIVE_UI_DORMANT",
+      "evidence": ["import_cohort_roster RPC", "import_commute_records RPC", "ingestion_runs", "ingestion_rows", "commute_observations"]
+    },
+    {
+      "id": "corridor_intelligence_backend",
+      "surface": "backend",
+      "state": "BACKEND_LIVE_UI_DORMANT",
+      "evidence": ["get_corridor_intelligence RPC", "supabase/migrations/20260808063500_operational_engine_intelligence.sql"]
+    },
+    {
+      "id": "deterministic_match_preview_backend",
+      "surface": "backend",
+      "state": "BACKEND_LIVE_UI_DORMANT",
+      "caveat": "Routing provider is not connected; detour is explicitly not calculated. Audited commuter_needs, planned_routes, and match_previews tables contain zero rows.",
+      "evidence": ["generate_deterministic_match_previews RPC", "get_match_preview_admin_queue RPC"]
+    },
+    {
+      "id": "commuter_need_intake",
+      "surface": "commuter",
+      "state": "PROTOTYPE_SESSION",
+      "evidence": ["relay-rider-beta-001/src/flows/CommuterOnboardingFlow.tsx", "relay-rider-beta-001/src/context/AppContext.tsx"]
+    },
+    {
+      "id": "commuter_ev_route_registration",
+      "surface": "commuter",
+      "state": "PROTOTYPE_SESSION"
+    },
+    {
+      "id": "commuter_options_matches",
+      "surface": "commuter",
+      "state": "PROTOTYPE_SESSION",
+      "caveat": "Not connected to the live institutional deterministic match engine."
+    },
+    {
+      "id": "commuter_green_route_wallet",
+      "surface": "commuter",
+      "state": "PROTOTYPE_SESSION",
+      "caveat": "No verified production institution-funded ledger or redemption integration."
+    },
+    {
+      "id": "trip_journey_demo",
+      "surface": "commuter",
+      "state": "PROTOTYPE_SESSION",
+      "caveat": "Simulated journey states only; no GPS, dispatch, live route activation, or payment."
+    },
+    {
+      "id": "commuter_to_admin_integration",
+      "surface": "cross_system",
+      "state": "NOT_IMPLEMENTED",
+      "blocking_reason": "Commuter beta uses session-memory state and does not persist to the live institutional Supabase system."
+    },
+    {
+      "id": "live_routing_detour",
+      "surface": "cross_system",
+      "state": "NOT_IMPLEMENTED"
+    },
+    {
+      "id": "production_incentive_redemption",
+      "surface": "cross_system",
+      "state": "NOT_IMPLEMENTED"
+    }
+  ],
+  "observed_live_row_counts": {
+    "organizations": 3,
+    "organization_sites": 0,
+    "cohorts": 0,
+    "tdm_programs": 0,
+    "data_sources": 0,
+    "ingestion_runs": 0,
+    "commute_observations": 0,
+    "operational_tasks": 0,
+    "evidence_baselines": 0,
+    "evidence_commute_observations": 0,
+    "evidence_metric_values": 0,
+    "commuter_needs": 0,
+    "planned_routes": 0,
+    "access_points": 0,
+    "match_previews": 0,
+    "administrative_reviews": 0
+  },
+  "p0_gaps": [
+    "rule2202_schema_deployment_drift",
+    "hosting_deployment_sha_not_verified",
+    "commuter_admin_backend_not_integrated"
+  ],
+  "forbidden_live_claims": [
+    "live ride booking",
+    "live dispatch",
+    "instant pickup",
+    "guaranteed transportation",
+    "automatic route activation",
+    "automatic commuter payments",
+    "guaranteed earnings",
+    "live GPS trip operations",
+    "live routing/detour calculation",
+    "automatic AQMD filing",
+    "AQMD approval or certification",
+    "validated parking reduction",
+    "validated VMT reduction",
+    "validated emissions reduction",
+    "certified carbon offsets",
+    "live PCC institutional baseline",
+    "integrated commuter-to-admin production workflow"
+  ]
+}
