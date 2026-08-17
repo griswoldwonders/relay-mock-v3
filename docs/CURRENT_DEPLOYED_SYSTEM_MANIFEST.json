@@ -24,10 +24,11 @@
       "project_ref": "dzrqrqfxcihvufvyctbt",
       "observed_status": "ACTIVE_HEALTHY",
       "observed_database_engine": "PostgreSQL 17",
-      "observed_migration_head": "20260817024507:harden_deployment_fingerprint_20260817030000",
-      "observed_migration_fingerprint": "c3f7955d6ce4742f3db53763c92b275a",
+      "observed_migration_head": "20260817030119:participant_client_contract_v1_20260817032000",
+      "observed_migration_fingerprint": "af49a824136167a6981787aff2cc5821",
       "rule2202_persistence_migration_applied": true,
-      "rule2202_runtime_grants_applied": true
+      "rule2202_runtime_grants_applied": true,
+      "participant_client_contract_applied": true
     }
   },
   "states": [
@@ -53,6 +54,20 @@
         "scripts/check-database-migration-head.mjs",
         "supabase/migrations/20260817025000_public_deployment_fingerprint.sql",
         "supabase/migrations/20260817030000_harden_deployment_fingerprint.sql"
+      ]
+    },
+    {
+      "id": "participant_client_backend_contract",
+      "surface": "backend",
+      "state": "LIVE_PERSISTED",
+      "caveat": "Authenticated tenant-scoped participant RPCs are live, but the commuter beta integration branch has not yet completed a real invitation/authenticated browser proof. This does not promote the cross-system commuter application itself to LIVE_PERSISTED.",
+      "evidence": [
+        "supabase/migrations/20260817032000_participant_client_contract_v1.sql",
+        "get_participant_program_context RPC",
+        "submit_participant_commuter_need RPC",
+        "submit_participant_planned_route RPC",
+        "get_participant_match_previews RPC",
+        "DEPLOYMENT.json"
       ]
     },
     {
@@ -157,7 +172,7 @@
       "id": "commuter_options_matches",
       "surface": "commuter",
       "state": "PROTOTYPE_SESSION",
-      "caveat": "Not connected to the live institutional deterministic match engine."
+      "caveat": "The live participant-safe backend read contract now exists, but the main commuter runtime is not yet connected to it."
     },
     {
       "id": "commuter_green_route_wallet",
@@ -175,7 +190,7 @@
       "id": "commuter_to_admin_integration",
       "surface": "cross_system",
       "state": "NOT_IMPLEMENTED",
-      "blocking_reason": "Commuter beta uses session-memory state and does not persist to the live institutional Supabase system."
+      "blocking_reason": "The backend participant contract is live, but relay-rider-beta-001 main still uses session-memory state and has not completed the authenticated browser integration proof."
     },
     {
       "id": "live_routing_detour",
@@ -213,7 +228,7 @@
   },
   "p0_gaps": [
     "hosting_deployment_sha_not_verified",
-    "commuter_admin_backend_not_integrated"
+    "commuter_admin_browser_integration_not_proven"
   ],
   "forbidden_live_claims": [
     "live ride booking",
