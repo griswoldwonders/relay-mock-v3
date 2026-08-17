@@ -6,10 +6,14 @@
   "scripts": {
     "check:runtime": "node scripts/check-mobile-runtime.mjs",
     "update:runtime-lock": "node scripts/update-mobile-runtime-lock.mjs",
+    "check:capabilities": "node scripts/validate-capability-manifest.mjs",
+    "check:migration-head": "node scripts/check-database-migration-head.mjs --local-only",
+    "check:live-migration-head": "node scripts/check-database-migration-head.mjs",
+    "check:deployment": "npm run check:capabilities && npm run check:live-migration-head",
     "test:runtime": "playwright test",
     "test:sites": "node --test tests/sites-worker.test.mjs",
     "dev": "vite",
-    "build": "tsc && vite build && node scripts/prepare-sites-build.mjs"
+    "build": "npm run check:deployment && tsc && vite build && node scripts/prepare-sites-build.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "5.3.0",

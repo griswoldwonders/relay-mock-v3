@@ -29,8 +29,11 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Audit dependencies
-        run: npm audit --audit-level=high
+      - name: Verify deployment source of truth
+        run: npm run check:deployment
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Build production bundle
         run: npm run build

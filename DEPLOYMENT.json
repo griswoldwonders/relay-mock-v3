@@ -1,0 +1,173 @@
+{
+  "schema_version": "relay-deployment-v1",
+  "environment": "production",
+  "verified_at": "2026-08-17T03:20:00Z",
+  "product_state": "research_beta",
+  "source_of_truth": {
+    "human_document": "docs/CURRENT_DEPLOYED_SYSTEM_SOURCE_OF_TRUTH.md",
+    "capability_manifest": "docs/CURRENT_DEPLOYED_SYSTEM_MANIFEST.json"
+  },
+  "institutional_runtime": {
+    "repository": "griswoldwonders/relay-mock-v3",
+    "branch": "main",
+    "audit_base_sha": "3f79f13ca96519693cee634ea355dfef3b854fd4",
+    "integration_branch": "docs/current-deployed-system-2026-08-16",
+    "integration_branch_ci_validated_sha": "4f2e06ce78d26ef17d4630d4cfd4f4bd0ee43c93",
+    "hosting_deployment_sha_verified": false
+  },
+  "commuter_runtime": {
+    "repository": "griswoldwonders/relay-rider-beta-001",
+    "branch": "main",
+    "audit_base_sha": "e04e6867e5faa556f6af11c2f51ceebefe4272d2",
+    "hosting_deployment_sha_verified": false,
+    "persistence_model": "session_memory",
+    "integration_branch": "engineering/commuter-backend-integration-2026-08-16",
+    "integration_branch_ci_validated_sha": "645377d2423c23d4e29cd5e6e56bf88fd7e99ad8"
+  },
+  "database": {
+    "provider": "supabase",
+    "project_name": "Relay-Rider-RD",
+    "project_ref": "dzrqrqfxcihvufvyctbt",
+    "rest_url": "https://dzrqrqfxcihvufvyctbt.supabase.co",
+    "publishable_key": "sb_publishable_hLCfTlWFEQRkwKUwz5Wv2g_DwoVqPy1",
+    "repo_migration_head": {
+      "path": "supabase/migrations/20260817032000_participant_client_contract_v1.sql",
+      "version": "20260817032000",
+      "logical_name": "participant_client_contract_v1"
+    },
+    "live_migration_head": {
+      "version": "20260817030119",
+      "name": "participant_client_contract_v1_20260817032000",
+      "fingerprint": "af49a824136167a6981787aff2cc5821"
+    },
+    "live_head_endpoint": "/rest/v1/relay_deployment_fingerprint?select=migration_version,migration_fingerprint",
+    "live_head_registry": {
+      "implementation": "rls_table_with_private_migration_history_trigger",
+      "public_fields": ["migration_version", "migration_fingerprint"],
+      "anonymous_access": "select_only",
+      "security_advisor_error_count_added_by_registry": 0
+    },
+    "rule2202_persistence": {
+      "applied": true,
+      "migration_version": "20260817023513",
+      "migration_name": "rule2202_persistence_20260812041000",
+      "repo_path": "supabase/migrations/20260812041000_rule2202_persistence.sql",
+      "runtime_grants_applied": true,
+      "runtime_grants_migration_version": "20260817023652",
+      "runtime_grants_migration_name": "authenticated_runtime_table_grants_20260817024500"
+    },
+    "participant_client_contract": {
+      "applied": true,
+      "migration_version": "20260817030119",
+      "migration_name": "participant_client_contract_v1_20260817032000",
+      "repo_path": "supabase/migrations/20260817032000_participant_client_contract_v1.sql",
+      "rpc_contract": [
+        "get_participant_program_context",
+        "submit_participant_commuter_need",
+        "submit_participant_planned_route",
+        "get_participant_match_previews"
+      ],
+      "anon_execute": false,
+      "authenticated_execute": true,
+      "tenant_write_policy_hardened": true
+    }
+  },
+  "verification": {
+    "institutional_integration_branch_ci": {
+      "workflow_run_id": 31990803962,
+      "validated_sha": "4f2e06ce78d26ef17d4630d4cfd4f4bd0ee43c93",
+      "deployment_source_of_truth": "passed",
+      "production_dependency_audit": "passed",
+      "production_build": "passed",
+      "static_worker_tests": "passed",
+      "dependency_review": "passed",
+      "codeql": "pending_at_record_time"
+    },
+    "commuter_integration_branch_ci": {
+      "workflow_run_id": 31990632158,
+      "validated_sha": "645377d2423c23d4e29cd5e6e56bf88fd7e99ad8",
+      "status": "passed"
+    },
+    "rule2202_tables_present": true,
+    "rule2202_rls_enabled": true,
+    "rule2202_policy_count_per_table": 2,
+    "rule2202_authenticated_rollback_smoke": {
+      "passed": true,
+      "persisted_then_rolled_back": [
+        "organization_sites",
+        "rule2202_reporting_years",
+        "rule2202_employee_populations",
+        "rule2202_validation_issues",
+        "rule2202_calculation_runs",
+        "rule2202_compliance_packages"
+      ],
+      "post_rollback_smoke_rows": 0,
+      "note": "A transaction simulated an authenticated managing organization member, exercised RLS-protected inserts and selects, and was rolled back. No synthetic smoke records remain."
+    },
+    "participant_client_contract": {
+      "rpc_grants_verified": true,
+      "anon_execute_denied": true,
+      "commuter_need_membership_policy_hardened": true,
+      "planned_route_membership_policy_hardened": true,
+      "browser_end_to_end_proof": false,
+      "note": "Backend contract is live. Participant and reviewer UI code is now implemented on review branches, but the real cross-user institution-program browser proof is still pending."
+    },
+    "participant_match_review_workspace": {
+      "implementation_branch_complete": true,
+      "route": "?view=participant-review",
+      "authenticated_reviewer_required": true,
+      "generation_rpc": "generate_deterministic_match_previews",
+      "queue_rpc": "get_match_preview_admin_queue",
+      "administrative_review_persistence": "administrative_reviews",
+      "production_deployment_verified": false,
+      "real_cross_user_review_proof": false
+    },
+    "deployment_fingerprint_registry": {
+      "passed": true,
+      "live_version": "20260817030119",
+      "live_fingerprint": "af49a824136167a6981787aff2cc5821",
+      "anon_select_verified": true,
+      "security_definer_view_removed": true
+    }
+  },
+  "promotion_gates": {
+    "rule2202_persistence": {
+      "state": "LIVE_PERSISTED",
+      "allowed_claim": "Rule 2202 worksite/reporting records can persist in the tenant-scoped backend when an authorized institutional session and configured site are present.",
+      "excluded_claims": [
+        "AVR calculation executor is complete",
+        "weekly VMT calculation executor is complete",
+        "compliance package generation is complete",
+        "automatic AQMD filing exists",
+        "AQMD approval or certification is provided"
+      ]
+    },
+    "participant_client_backend_contract": {
+      "state": "LIVE_PERSISTED",
+      "allowed_claim": "The live institutional backend exposes authenticated, tenant-scoped participant RPCs for program context, commuter-need submission, planned-route registration, and participant-safe match/review reads.",
+      "excluded_claims": [
+        "the commuter beta is already integrated in production",
+        "a real institution participant has completed the browser flow",
+        "match generation is participant-triggered",
+        "transportation is activated automatically",
+        "live routing or detour calculation exists"
+      ]
+    },
+    "participant_match_review_workspace": {
+      "state": "CODE_ONLY",
+      "allowed_claim": "The institutional integration branch implements an authenticated reviewer workspace for generating deterministic Match Previews and recording administrative review decisions.",
+      "excluded_claims": [
+        "the reviewer workspace is deployed to production",
+        "a real cross-user Match Preview has been reviewed end-to-end",
+        "administrative approval confirms transportation",
+        "live routing or detour calculation exists"
+      ]
+    }
+  },
+  "deployment_gates": {
+    "capability_manifest_validation": "required",
+    "repository_migration_head_validation": "required",
+    "live_database_migration_head_validation": "required",
+    "build_must_fail_on_drift": true
+  }
+}
