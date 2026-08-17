@@ -1,0 +1,87 @@
+{
+  "schema_version": "relay-deployment-v1",
+  "environment": "production",
+  "verified_at": "2026-08-17T02:38:50Z",
+  "product_state": "research_beta",
+  "source_of_truth": {
+    "human_document": "docs/CURRENT_DEPLOYED_SYSTEM_SOURCE_OF_TRUTH.md",
+    "capability_manifest": "docs/CURRENT_DEPLOYED_SYSTEM_MANIFEST.json"
+  },
+  "institutional_runtime": {
+    "repository": "griswoldwonders/relay-mock-v3",
+    "branch": "main",
+    "audit_base_sha": "3f79f13ca96519693cee634ea355dfef3b854fd4",
+    "hosting_deployment_sha_verified": false
+  },
+  "commuter_runtime": {
+    "repository": "griswoldwonders/relay-rider-beta-001",
+    "branch": "main",
+    "audit_base_sha": "e04e6867e5faa556f6af11c2f51ceebefe4272d2",
+    "hosting_deployment_sha_verified": false,
+    "persistence_model": "session_memory"
+  },
+  "database": {
+    "provider": "supabase",
+    "project_name": "Relay-Rider-RD",
+    "project_ref": "dzrqrqfxcihvufvyctbt",
+    "rest_url": "https://dzrqrqfxcihvufvyctbt.supabase.co",
+    "publishable_key": "sb_publishable_hLCfTlWFEQRkwKUwz5Wv2g_DwoVqPy1",
+    "repo_migration_head": {
+      "path": "supabase/migrations/20260817025000_public_deployment_fingerprint.sql",
+      "version": "20260817025000",
+      "logical_name": "public_deployment_fingerprint"
+    },
+    "live_migration_head": {
+      "version": "20260817023850",
+      "name": "public_deployment_fingerprint_20260817025000",
+      "fingerprint": "5bf86e032a615d63752de9e3d6db2fcb"
+    },
+    "live_head_endpoint": "/rest/v1/relay_deployment_fingerprint?select=migration_version,migration_fingerprint",
+    "rule2202_persistence": {
+      "applied": true,
+      "migration_version": "20260817023513",
+      "migration_name": "rule2202_persistence_20260812041000",
+      "repo_path": "supabase/migrations/20260812041000_rule2202_persistence.sql",
+      "runtime_grants_applied": true,
+      "runtime_grants_migration_version": "20260817023652",
+      "runtime_grants_migration_name": "authenticated_runtime_table_grants_20260817024500"
+    }
+  },
+  "verification": {
+    "rule2202_tables_present": true,
+    "rule2202_rls_enabled": true,
+    "rule2202_policy_count_per_table": 2,
+    "rule2202_authenticated_rollback_smoke": {
+      "passed": true,
+      "persisted_then_rolled_back": [
+        "organization_sites",
+        "rule2202_reporting_years",
+        "rule2202_employee_populations",
+        "rule2202_validation_issues",
+        "rule2202_calculation_runs",
+        "rule2202_compliance_packages"
+      ],
+      "post_rollback_smoke_rows": 0,
+      "note": "A transaction simulated an authenticated managing organization member, exercised RLS-protected inserts and selects, and was rolled back. No synthetic smoke records remain."
+    }
+  },
+  "promotion_gates": {
+    "rule2202_persistence": {
+      "state": "LIVE_PERSISTED",
+      "allowed_claim": "Rule 2202 worksite/reporting records can persist in the tenant-scoped backend when an authorized institutional session and configured site are present.",
+      "excluded_claims": [
+        "AVR calculation executor is complete",
+        "weekly VMT calculation executor is complete",
+        "compliance package generation is complete",
+        "automatic AQMD filing exists",
+        "AQMD approval or certification is provided"
+      ]
+    }
+  },
+  "deployment_gates": {
+    "capability_manifest_validation": "required",
+    "repository_migration_head_validation": "required",
+    "live_database_migration_head_validation": "required",
+    "build_must_fail_on_drift": true
+  }
+}
