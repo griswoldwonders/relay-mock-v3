@@ -11,5 +11,10 @@ import "./operational-scroll-fix.css";
  * part of this partner-facing demonstration flow.
  */
 export default function InstitutionalSaasGateway() {
-  return <OperationalSaasWorkspace />;
+  return (
+    <>
+      <a className="tdm-launcher" href="?view=tdm-programs">Programs & Incentives →</a>
+      <OperationalSaasWorkspace />
+    </>
+  );
 }
