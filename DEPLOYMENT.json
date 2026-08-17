@@ -1,7 +1,7 @@
 {
   "schema_version": "relay-deployment-v1",
   "environment": "production",
-  "verified_at": "2026-08-17T02:38:50Z",
+  "verified_at": "2026-08-17T02:45:07Z",
   "product_state": "research_beta",
   "source_of_truth": {
     "human_document": "docs/CURRENT_DEPLOYED_SYSTEM_SOURCE_OF_TRUTH.md",
@@ -27,16 +27,22 @@
     "rest_url": "https://dzrqrqfxcihvufvyctbt.supabase.co",
     "publishable_key": "sb_publishable_hLCfTlWFEQRkwKUwz5Wv2g_DwoVqPy1",
     "repo_migration_head": {
-      "path": "supabase/migrations/20260817025000_public_deployment_fingerprint.sql",
-      "version": "20260817025000",
-      "logical_name": "public_deployment_fingerprint"
+      "path": "supabase/migrations/20260817030000_harden_deployment_fingerprint.sql",
+      "version": "20260817030000",
+      "logical_name": "harden_deployment_fingerprint"
     },
     "live_migration_head": {
-      "version": "20260817023850",
-      "name": "public_deployment_fingerprint_20260817025000",
-      "fingerprint": "5bf86e032a615d63752de9e3d6db2fcb"
+      "version": "20260817024507",
+      "name": "harden_deployment_fingerprint_20260817030000",
+      "fingerprint": "c3f7955d6ce4742f3db53763c92b275a"
     },
     "live_head_endpoint": "/rest/v1/relay_deployment_fingerprint?select=migration_version,migration_fingerprint",
+    "live_head_registry": {
+      "implementation": "rls_table_with_private_migration_history_trigger",
+      "public_fields": ["migration_version", "migration_fingerprint"],
+      "anonymous_access": "select_only",
+      "security_advisor_error_count_added_by_registry": 0
+    },
     "rule2202_persistence": {
       "applied": true,
       "migration_version": "20260817023513",
@@ -63,6 +69,13 @@
       ],
       "post_rollback_smoke_rows": 0,
       "note": "A transaction simulated an authenticated managing organization member, exercised RLS-protected inserts and selects, and was rolled back. No synthetic smoke records remain."
+    },
+    "deployment_fingerprint_registry": {
+      "passed": true,
+      "live_version": "20260817024507",
+      "live_fingerprint": "c3f7955d6ce4742f3db53763c92b275a",
+      "anon_select_verified": true,
+      "security_definer_view_removed": true
     }
   },
   "promotion_gates": {
