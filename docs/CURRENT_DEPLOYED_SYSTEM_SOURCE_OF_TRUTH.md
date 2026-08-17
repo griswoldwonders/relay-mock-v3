@@ -106,22 +106,22 @@ PostgreSQL: 17
 Verified live migration head after this audit:
 
 ```text
-version:     20260817023850
-name:        public_deployment_fingerprint_20260817025000
-fingerprint: 5bf86e032a615d63752de9e3d6db2fcb
+version:     20260817024507
+name:        harden_deployment_fingerprint_20260817030000
+fingerprint: c3f7955d6ce4742f3db53763c92b275a
 ```
 
-The public read-only view `public.relay_deployment_fingerprint` exposes only:
+The public object `public.relay_deployment_fingerprint` is now a one-row RLS table, not a security-definer view. It exposes only:
 
 - latest migration version; and
 - an MD5 fingerprint of `version:name`.
 
-It does not expose migration names or application records through the public endpoint. The deployment checker compares this live result against `DEPLOYMENT.json` before a production build can succeed.
+A private trigger on `supabase_migrations.schema_migrations` updates this registry whenever migration history changes. Anonymous and authenticated clients receive SELECT only; no application data or migration name is exposed. The initial security-definer-view implementation was replaced after the Supabase security advisor flagged it. Re-running the security advisor confirmed that newly introduced ERROR is gone.
 
 Repository migration head:
 
 ```text
-supabase/migrations/20260817025000_public_deployment_fingerprint.sql
+supabase/migrations/20260817030000_harden_deployment_fingerprint.sql
 ```
 
 Any new timestamped migration must be accompanied by a reviewed `DEPLOYMENT.json` update after that migration is verified live. Otherwise the build fails.
@@ -342,9 +342,11 @@ The backend is real deployed infrastructure, but it has not yet demonstrated a l
 
 1. identifies the newest repository migration;
 2. requires it to match `DEPLOYMENT.json`;
-3. calls the live Supabase migration-fingerprint view using the project's public publishable key;
+3. calls the live Supabase migration-fingerprint table using the project's public publishable key;
 4. compares the live migration version/fingerprint to `DEPLOYMENT.json`;
 5. exits non-zero on any mismatch or unavailable live check.
+
+The registry row is automatically synchronized from actual Supabase migration history by the private database trigger installed in `20260817030000_harden_deployment_fingerprint.sql`.
 
 ### CI/build rule
 
