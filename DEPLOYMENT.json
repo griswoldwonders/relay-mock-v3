@@ -1,7 +1,7 @@
 {
   "schema_version": "relay-deployment-v1",
   "environment": "production",
-  "verified_at": "2026-08-17T03:01:19Z",
+  "verified_at": "2026-08-17T03:20:00Z",
   "product_state": "research_beta",
   "source_of_truth": {
     "human_document": "docs/CURRENT_DEPLOYED_SYSTEM_SOURCE_OF_TRUTH.md",
@@ -11,6 +11,8 @@
     "repository": "griswoldwonders/relay-mock-v3",
     "branch": "main",
     "audit_base_sha": "3f79f13ca96519693cee634ea355dfef3b854fd4",
+    "integration_branch": "docs/current-deployed-system-2026-08-16",
+    "integration_branch_ci_validated_sha": "4f2e06ce78d26ef17d4630d4cfd4f4bd0ee43c93",
     "hosting_deployment_sha_verified": false
   },
   "commuter_runtime": {
@@ -19,7 +21,8 @@
     "audit_base_sha": "e04e6867e5faa556f6af11c2f51ceebefe4272d2",
     "hosting_deployment_sha_verified": false,
     "persistence_model": "session_memory",
-    "integration_branch": "engineering/commuter-backend-integration-2026-08-16"
+    "integration_branch": "engineering/commuter-backend-integration-2026-08-16",
+    "integration_branch_ci_validated_sha": "645377d2423c23d4e29cd5e6e56bf88fd7e99ad8"
   },
   "database": {
     "provider": "supabase",
@@ -70,6 +73,21 @@
     }
   },
   "verification": {
+    "institutional_integration_branch_ci": {
+      "workflow_run_id": 31990803962,
+      "validated_sha": "4f2e06ce78d26ef17d4630d4cfd4f4bd0ee43c93",
+      "deployment_source_of_truth": "passed",
+      "production_dependency_audit": "passed",
+      "production_build": "passed",
+      "static_worker_tests": "passed",
+      "dependency_review": "passed",
+      "codeql": "pending_at_record_time"
+    },
+    "commuter_integration_branch_ci": {
+      "workflow_run_id": 31990632158,
+      "validated_sha": "645377d2423c23d4e29cd5e6e56bf88fd7e99ad8",
+      "status": "passed"
+    },
     "rule2202_tables_present": true,
     "rule2202_rls_enabled": true,
     "rule2202_policy_count_per_table": 2,
@@ -92,7 +110,17 @@
       "commuter_need_membership_policy_hardened": true,
       "planned_route_membership_policy_hardened": true,
       "browser_end_to_end_proof": false,
-      "note": "Backend contract is live. The commuter repository integration branch must still pass a real invitation/authenticated participant browser flow before the cross-system integration is promoted."
+      "note": "Backend contract is live. Participant and reviewer UI code is now implemented on review branches, but the real cross-user institution-program browser proof is still pending."
+    },
+    "participant_match_review_workspace": {
+      "implementation_branch_complete": true,
+      "route": "?view=participant-review",
+      "authenticated_reviewer_required": true,
+      "generation_rpc": "generate_deterministic_match_previews",
+      "queue_rpc": "get_match_preview_admin_queue",
+      "administrative_review_persistence": "administrative_reviews",
+      "production_deployment_verified": false,
+      "real_cross_user_review_proof": false
     },
     "deployment_fingerprint_registry": {
       "passed": true,
@@ -122,6 +150,16 @@
         "a real institution participant has completed the browser flow",
         "match generation is participant-triggered",
         "transportation is activated automatically",
+        "live routing or detour calculation exists"
+      ]
+    },
+    "participant_match_review_workspace": {
+      "state": "CODE_ONLY",
+      "allowed_claim": "The institutional integration branch implements an authenticated reviewer workspace for generating deterministic Match Previews and recording administrative review decisions.",
+      "excluded_claims": [
+        "the reviewer workspace is deployed to production",
+        "a real cross-user Match Preview has been reviewed end-to-end",
+        "administrative approval confirms transportation",
         "live routing or detour calculation exists"
       ]
     }
