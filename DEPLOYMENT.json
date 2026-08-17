@@ -1,7 +1,7 @@
 {
   "schema_version": "relay-deployment-v1",
   "environment": "production",
-  "verified_at": "2026-08-17T02:45:07Z",
+  "verified_at": "2026-08-17T03:01:19Z",
   "product_state": "research_beta",
   "source_of_truth": {
     "human_document": "docs/CURRENT_DEPLOYED_SYSTEM_SOURCE_OF_TRUTH.md",
@@ -18,7 +18,8 @@
     "branch": "main",
     "audit_base_sha": "e04e6867e5faa556f6af11c2f51ceebefe4272d2",
     "hosting_deployment_sha_verified": false,
-    "persistence_model": "session_memory"
+    "persistence_model": "session_memory",
+    "integration_branch": "engineering/commuter-backend-integration-2026-08-16"
   },
   "database": {
     "provider": "supabase",
@@ -27,14 +28,14 @@
     "rest_url": "https://dzrqrqfxcihvufvyctbt.supabase.co",
     "publishable_key": "sb_publishable_hLCfTlWFEQRkwKUwz5Wv2g_DwoVqPy1",
     "repo_migration_head": {
-      "path": "supabase/migrations/20260817030000_harden_deployment_fingerprint.sql",
-      "version": "20260817030000",
-      "logical_name": "harden_deployment_fingerprint"
+      "path": "supabase/migrations/20260817032000_participant_client_contract_v1.sql",
+      "version": "20260817032000",
+      "logical_name": "participant_client_contract_v1"
     },
     "live_migration_head": {
-      "version": "20260817024507",
-      "name": "harden_deployment_fingerprint_20260817030000",
-      "fingerprint": "c3f7955d6ce4742f3db53763c92b275a"
+      "version": "20260817030119",
+      "name": "participant_client_contract_v1_20260817032000",
+      "fingerprint": "af49a824136167a6981787aff2cc5821"
     },
     "live_head_endpoint": "/rest/v1/relay_deployment_fingerprint?select=migration_version,migration_fingerprint",
     "live_head_registry": {
@@ -51,6 +52,21 @@
       "runtime_grants_applied": true,
       "runtime_grants_migration_version": "20260817023652",
       "runtime_grants_migration_name": "authenticated_runtime_table_grants_20260817024500"
+    },
+    "participant_client_contract": {
+      "applied": true,
+      "migration_version": "20260817030119",
+      "migration_name": "participant_client_contract_v1_20260817032000",
+      "repo_path": "supabase/migrations/20260817032000_participant_client_contract_v1.sql",
+      "rpc_contract": [
+        "get_participant_program_context",
+        "submit_participant_commuter_need",
+        "submit_participant_planned_route",
+        "get_participant_match_previews"
+      ],
+      "anon_execute": false,
+      "authenticated_execute": true,
+      "tenant_write_policy_hardened": true
     }
   },
   "verification": {
@@ -70,10 +86,18 @@
       "post_rollback_smoke_rows": 0,
       "note": "A transaction simulated an authenticated managing organization member, exercised RLS-protected inserts and selects, and was rolled back. No synthetic smoke records remain."
     },
+    "participant_client_contract": {
+      "rpc_grants_verified": true,
+      "anon_execute_denied": true,
+      "commuter_need_membership_policy_hardened": true,
+      "planned_route_membership_policy_hardened": true,
+      "browser_end_to_end_proof": false,
+      "note": "Backend contract is live. The commuter repository integration branch must still pass a real invitation/authenticated participant browser flow before the cross-system integration is promoted."
+    },
     "deployment_fingerprint_registry": {
       "passed": true,
-      "live_version": "20260817024507",
-      "live_fingerprint": "c3f7955d6ce4742f3db53763c92b275a",
+      "live_version": "20260817030119",
+      "live_fingerprint": "af49a824136167a6981787aff2cc5821",
       "anon_select_verified": true,
       "security_definer_view_removed": true
     }
@@ -88,6 +112,17 @@
         "compliance package generation is complete",
         "automatic AQMD filing exists",
         "AQMD approval or certification is provided"
+      ]
+    },
+    "participant_client_backend_contract": {
+      "state": "LIVE_PERSISTED",
+      "allowed_claim": "The live institutional backend exposes authenticated, tenant-scoped participant RPCs for program context, commuter-need submission, planned-route registration, and participant-safe match/review reads.",
+      "excluded_claims": [
+        "the commuter beta is already integrated in production",
+        "a real institution participant has completed the browser flow",
+        "match generation is participant-triggered",
+        "transportation is activated automatically",
+        "live routing or detour calculation exists"
       ]
     }
   },
