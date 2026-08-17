@@ -24,8 +24,10 @@
       "project_ref": "dzrqrqfxcihvufvyctbt",
       "observed_status": "ACTIVE_HEALTHY",
       "observed_database_engine": "PostgreSQL 17",
-      "observed_migration_head": "20260811202929:pcc_evidence_engine_v2",
-      "rule2202_persistence_migration_applied": false
+      "observed_migration_head": "20260817023850:public_deployment_fingerprint_20260817025000",
+      "observed_migration_fingerprint": "5bf86e032a615d63752de9e3d6db2fcb",
+      "rule2202_persistence_migration_applied": true,
+      "rule2202_runtime_grants_applied": true
     }
   },
   "states": [
@@ -40,6 +42,18 @@
     "DEPLOYMENT_UNVERIFIED"
   ],
   "capabilities": [
+    {
+      "id": "deployment_drift_guard",
+      "surface": "engineering",
+      "state": "LIVE_PERSISTED",
+      "caveat": "The live database head is verified through a read-only migration fingerprint. Exact hosting deployment SHA remains separately unverified.",
+      "evidence": [
+        "DEPLOYMENT.json",
+        "scripts/validate-capability-manifest.mjs",
+        "scripts/check-database-migration-head.mjs",
+        "supabase/migrations/20260817025000_public_deployment_fingerprint.sql"
+      ]
+    },
     {
       "id": "admin_public_workspace",
       "surface": "institutional",
@@ -64,8 +78,13 @@
       "surface": "institutional",
       "state": "LIVE_PERSISTED",
       "route": "?view=pcc-evidence-workbench",
-      "caveat": "Code and required live schema/functions are present, but audited evidence tables contain zero rows and this audit did not execute a real institutional import.",
-      "evidence": ["src/PccEvidenceWorkbench.tsx", "src/evidenceApi.ts", "supabase migration pcc_evidence_engine_v2"]
+      "caveat": "Required schema and direct authenticated table grants are live, but audited evidence tables contain zero rows and this audit did not execute a real institutional CSV import.",
+      "evidence": [
+        "src/PccEvidenceWorkbench.tsx",
+        "src/evidenceApi.ts",
+        "pcc_evidence_engine_v2 live migration",
+        "supabase/migrations/20260817024500_authenticated_runtime_table_grants.sql"
+      ]
     },
     {
       "id": "rule2202_public_ui",
@@ -76,20 +95,27 @@
     {
       "id": "rule2202_persistence",
       "surface": "institutional",
-      "state": "CODE_ONLY",
-      "blocking_reason": "GitHub migration 20260812041000_rule2202_persistence.sql is not present in live Supabase migration history and required rule2202_* tables are absent.",
-      "evidence": ["src/Rule2202Workspace.tsx", "src/rule2202Api.ts", "supabase/migrations/20260812041000_rule2202_persistence.sql"]
+      "state": "LIVE_PERSISTED",
+      "caveat": "Live schema, RLS policies and authenticated runtime grants are verified. A rollback-only smoke transaction exercised organization-site, reporting-year, employee-population, validation, calculation-run and package persistence under a simulated authenticated managing member. No employer Rule 2202 records currently remain in the audited tables. This state does not promote calculation execution, package generation or AQMD filing.",
+      "evidence": [
+        "src/Rule2202Workspace.tsx",
+        "src/rule2202Api.ts",
+        "supabase/migrations/20260812041000_rule2202_persistence.sql",
+        "supabase/migrations/20260817024500_authenticated_runtime_table_grants.sql",
+        "DEPLOYMENT.json"
+      ]
     },
     {
       "id": "rule2202_calculation_execution",
       "surface": "institutional",
       "state": "NOT_IMPLEMENTED",
-      "blocking_reason": "Mounted UI reads calculation-run records but does not execute the AVR/weekly-VMT calculation workflow end-to-end."
+      "blocking_reason": "Mounted UI can read persisted calculation-run records but does not execute the AVR/weekly-VMT methodology end-to-end."
     },
     {
       "id": "rule2202_package_generation",
       "surface": "institutional",
-      "state": "NOT_IMPLEMENTED"
+      "state": "NOT_IMPLEMENTED",
+      "blocking_reason": "Package persistence exists, but the mounted Prepare review package control has no implemented generation action."
     },
     {
       "id": "rule2202_aqmd_submission",
@@ -112,7 +138,7 @@
       "id": "deterministic_match_preview_backend",
       "surface": "backend",
       "state": "BACKEND_LIVE_UI_DORMANT",
-      "caveat": "Routing provider is not connected; detour is explicitly not calculated. Audited commuter_needs, planned_routes, and match_previews tables contain zero rows.",
+      "caveat": "Routing provider is not connected; detour is explicitly not calculated. Audited commuter_needs, planned_routes and match_previews tables contain zero rows.",
       "evidence": ["generate_deterministic_match_previews RPC", "get_match_preview_admin_queue RPC"]
     },
     {
@@ -142,7 +168,7 @@
       "id": "trip_journey_demo",
       "surface": "commuter",
       "state": "PROTOTYPE_SESSION",
-      "caveat": "Simulated journey states only; no GPS, dispatch, live route activation, or payment."
+      "caveat": "Simulated journey states only; no GPS, dispatch, live route activation or payment."
     },
     {
       "id": "commuter_to_admin_integration",
@@ -177,10 +203,14 @@
     "planned_routes": 0,
     "access_points": 0,
     "match_previews": 0,
-    "administrative_reviews": 0
+    "administrative_reviews": 0,
+    "rule2202_reporting_years": 0,
+    "rule2202_employee_populations": 0,
+    "rule2202_validation_issues": 0,
+    "rule2202_calculation_runs": 0,
+    "rule2202_compliance_packages": 0
   },
   "p0_gaps": [
-    "rule2202_schema_deployment_drift",
     "hosting_deployment_sha_not_verified",
     "commuter_admin_backend_not_integrated"
   ],
