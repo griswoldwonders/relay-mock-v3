@@ -60,7 +60,7 @@
       "id": "participant_client_backend_contract",
       "surface": "backend",
       "state": "LIVE_PERSISTED",
-      "caveat": "Authenticated tenant-scoped participant RPCs are live, but the commuter beta integration branch has not yet completed a real invitation/authenticated browser proof. This does not promote the cross-system commuter application itself to LIVE_PERSISTED.",
+      "caveat": "Authenticated tenant-scoped participant RPCs are live. Participant and reviewer client code is CI-validated on integration branches, but the real invitation/authenticated cross-user browser proof is not complete and the client integrations are not yet production-deployed.",
       "evidence": [
         "supabase/migrations/20260817032000_participant_client_contract_v1.sql",
         "get_participant_program_context RPC",
@@ -154,25 +154,40 @@
       "id": "deterministic_match_preview_backend",
       "surface": "backend",
       "state": "BACKEND_LIVE_UI_DORMANT",
-      "caveat": "Routing provider is not connected; detour is explicitly not calculated. Audited commuter_needs, planned_routes and match_previews tables contain zero rows.",
+      "caveat": "Routing provider is not connected; detour is explicitly not calculated. Audited commuter_needs, planned_routes and match_previews tables contain zero rows. Production main does not yet expose the new reviewer workspace.",
       "evidence": ["generate_deterministic_match_previews RPC", "get_match_preview_admin_queue RPC"]
+    },
+    {
+      "id": "participant_match_review_workspace",
+      "surface": "institutional",
+      "state": "CODE_ONLY",
+      "route": "?view=participant-review",
+      "caveat": "Implemented and build-validated on the institutional review branch. It authenticates an institutional reviewer, generates deterministic Match Previews through the existing reviewer-only RPC, reads the admin queue, and records administrative review decisions. It is not production-deployed and has not completed a real cross-user proof.",
+      "evidence": [
+        "src/ParticipantMatchReviewWorkspace.tsx",
+        "src/matchReviewApi.ts",
+        "src/WebRuntime.tsx",
+        "DEPLOYMENT.json"
+      ]
     },
     {
       "id": "commuter_need_intake",
       "surface": "commuter",
       "state": "PROTOTYPE_SESSION",
+      "caveat": "Production main remains session-memory. The commuter integration branch implements authenticated backend persistence and has passed CI but is not production-deployed.",
       "evidence": ["relay-rider-beta-001/src/flows/CommuterOnboardingFlow.tsx", "relay-rider-beta-001/src/context/AppContext.tsx"]
     },
     {
       "id": "commuter_ev_route_registration",
       "surface": "commuter",
-      "state": "PROTOTYPE_SESSION"
+      "state": "PROTOTYPE_SESSION",
+      "caveat": "Production main remains session-memory; backend persistence exists only on the commuter integration branch."
     },
     {
       "id": "commuter_options_matches",
       "surface": "commuter",
       "state": "PROTOTYPE_SESSION",
-      "caveat": "The live participant-safe backend read contract now exists, but the main commuter runtime is not yet connected to it."
+      "caveat": "Production main remains prototype-only. The commuter integration branch separates governed backend Match Previews from simulated comparison cards and is CI-validated but not production-deployed."
     },
     {
       "id": "commuter_green_route_wallet",
@@ -189,8 +204,8 @@
     {
       "id": "commuter_to_admin_integration",
       "surface": "cross_system",
-      "state": "NOT_IMPLEMENTED",
-      "blocking_reason": "The backend participant contract is live, but relay-rider-beta-001 main still uses session-memory state and has not completed the authenticated browser integration proof."
+      "state": "CODE_ONLY",
+      "blocking_reason": "Participant and reviewer sides are implemented and CI-validated on separate integration branches with a live tenant-scoped backend contract. Production deployment, institution-issued invitation proof, second legitimate planned-route participant, reviewer-generated Match Preview, review write, and participant readback remain unverified."
     },
     {
       "id": "live_routing_detour",
@@ -228,7 +243,7 @@
   },
   "p0_gaps": [
     "hosting_deployment_sha_not_verified",
-    "commuter_admin_browser_integration_not_proven"
+    "real_cross_user_commuter_admin_browser_proof_not_completed"
   ],
   "forbidden_live_claims": [
     "live ride booking",
