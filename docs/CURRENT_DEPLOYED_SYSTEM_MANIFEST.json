@@ -24,8 +24,8 @@
       "project_ref": "dzrqrqfxcihvufvyctbt",
       "observed_status": "ACTIVE_HEALTHY",
       "observed_database_engine": "PostgreSQL 17",
-      "observed_migration_head": "20260817023850:public_deployment_fingerprint_20260817025000",
-      "observed_migration_fingerprint": "5bf86e032a615d63752de9e3d6db2fcb",
+      "observed_migration_head": "20260817024507:harden_deployment_fingerprint_20260817030000",
+      "observed_migration_fingerprint": "c3f7955d6ce4742f3db53763c92b275a",
       "rule2202_persistence_migration_applied": true,
       "rule2202_runtime_grants_applied": true
     }
@@ -46,12 +46,13 @@
       "id": "deployment_drift_guard",
       "surface": "engineering",
       "state": "LIVE_PERSISTED",
-      "caveat": "The live database head is verified through a read-only migration fingerprint. Exact hosting deployment SHA remains separately unverified.",
+      "caveat": "The live database head is verified through a read-only RLS registry table synchronized from Supabase migration history. Exact hosting deployment SHA remains separately unverified.",
       "evidence": [
         "DEPLOYMENT.json",
         "scripts/validate-capability-manifest.mjs",
         "scripts/check-database-migration-head.mjs",
-        "supabase/migrations/20260817025000_public_deployment_fingerprint.sql"
+        "supabase/migrations/20260817025000_public_deployment_fingerprint.sql",
+        "supabase/migrations/20260817030000_harden_deployment_fingerprint.sql"
       ]
     },
     {
