@@ -37,13 +37,13 @@ export default function OperationalSaasWorkspace() {
         <div className="ops-brand"><div className="ops-mark">R</div><div><strong>Relay Rider</strong><span>Rule 2202 + Commute Intelligence</span></div></div>
         <div className="ops-tenant"><small>GEOGRAPHY</small><button>Pasadena, California<span>⌄</span></button></div>
         <nav>
-          {groups.map((group) => <div className="ops-nav-group" key={group}><small>{group}</small>{NAV.filter((item) => item.group === group).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><span className="ops-nav-dot" />{item.label}</button>)}</div>)}
+          {groups.map((group) => <div className="ops-nav-group" key={group}><small>{group}</small>{NAV.filter((item) => item.group === group).map((item) => <button key={item.id} className={view === item.id ? "active" : ""} aria-current={view === item.id ? "page" : undefined} onClick={() => setView(item.id)}><span className="ops-nav-dot" aria-hidden="true" />{item.label}</button>)}</div>)}
         </nav>
         <div className="ops-sidebar-foot"><span className="ops-demo-dot" />Compliance-support workspace<small>Public Pasadena context is source-backed. Employer-specific Rule 2202 values remain unavailable until verified employer data are connected.</small></div>
       </aside>
 
       <section className="ops-main">
-        <header className="ops-topbar"><div><small>RULE 2202 COMPLIANCE + PASADENA EVIDENCE</small><h1>{title}</h1></div><div className="ops-top-actions"><button className="ghost" onClick={() => window.print()}>Print</button></div></header>
+        <header className="ops-topbar"><div><small>RULE 2202 COMPLIANCE + PASADENA EVIDENCE</small><h1>{title}</h1></div><div className="ops-top-actions"><button className="ghost" type="button" aria-label="Print current workspace" onClick={() => window.print()}>Print</button></div></header>
         <main className="ops-content">
           {view === "command" && <CommandCenter onNavigate={setView} />}
           {view === "rule2202" && <Rule2202Workspace />}
