@@ -14,7 +14,7 @@ type WorkspaceView =
   | "settings";
 
 const NAV: Array<{ id: WorkspaceView; label: string; group: string }> = [
-  { id: "command", label: "Command Center", group: "Overview" },
+  { id: "command", label: "ETC Overview", group: "Overview" },
   { id: "rule2202", label: "Rule 2202", group: "Compliance" },
   { id: "tasks", label: "Tasks & Reviews", group: "Compliance" },
   { id: "intake", label: "Commute Data", group: "Evidence" },
@@ -61,14 +61,24 @@ export default function OperationalSaasWorkspace() {
 
 function CommandCenter({ onNavigate }: { onNavigate: (view: WorkspaceView) => void }) {
   const cards = ["population_2025", "mean_commute_2024_1y", "drive_alone", "work_home", "transit", "carpool"].map((key) => metricMap[key]);
+  const workItems = [
+    ["Confirm worksite applicability", "Address, employee population, classification, ETC/site contact and due date.", "Blocking", "danger", "rule2202"],
+    ["Select VMT reporting pathway", "Choose AVR survey records or anonymized ZIP-code workflow.", "Required", "warn", "rule2202"],
+    ["Connect employer commute data", "Required before AVR, weekly VMT or package values can be calculated.", "Open", "warn", "intake"],
+  ] as const;
   return <>
-    <section className="ops-hero"><div><span className="ops-eyebrow">COMPLIANCE OPERATIONS</span><h2>Run Rule 2202 from verified worksite data, not a static dashboard.</h2><p>Relay Rider now separates the employer compliance workflow from public Pasadena context. Worksite population, AVR, weekly VMT, telecommute activity and filing status stay unavailable until verified employer records support them.</p><div className="ops-hero-actions"><button className="primary" onClick={() => onNavigate("rule2202")}>Open Rule 2202 workspace</button><button className="ghost" onClick={() => onNavigate("intake")}>Review data sources</button></div></div><div className="ops-health"><small>2026 RULE 2202</small><strong>Blocked</strong><span>Employer data not connected</span><div><i style={{width:"17%"}} /></div><p>Next operational dependency: confirm the regulated worksite, employee population, business classification, ETC/site contact, reporting due date and selected VMT input pathway.</p></div></section>
-    <div className="ops-grid two">
-      <Panel title="Rule 2202 readiness"><div className="ops-task-list"><article><div><strong>Worksite applicability</strong><span>250+ employee threshold must be evaluated using actual worksite records</span></div><div><b className="warn">Needs input</b></div></article><article><div><strong>Survey / ZIP pathway</strong><span>AQMD supports AVR survey data or anonymized employee ZIP-code VMT inputs</span></div><div><b className="neutral">Not selected</b></div></article><article><div><strong>Weekly VMT by mode</strong><span>Required reporting value is unavailable until the AQMD input dataset is validated</span></div><div><b className="warn">Unavailable</b></div></article></div></Panel>
-      <Panel title="Pasadena public context"><div className="ops-task-list"><article><div><strong>ACS commute mode context</strong><span>Official estimate for Pasadena residents; not employer commute behavior</span></div><div><b className="neutral">Source-backed</b></div></article><article><div><strong>PWP charging inventory</strong><span>Official utility infrastructure status; not commuter charging demand</span></div><div><b className="neutral">Source-backed</b></div></article><article><div><strong>Employer-specific baseline</strong><span>No verified worksite commute dataset connected</span></div><div><b className="warn">Unavailable</b></div></article></div></Panel>
-    </div>
-    <section className="ops-metrics">{cards.map((metric) => <article key={metric.key}><small>{metric.label}</small><strong>{metric.value}</strong><span>{metric.vintage} · Pasadena public context</span></article>)}</section>
-    <Panel title="Public Pasadena evidence"><SourceMetricTable /></Panel>
+    <section className="etc-overview-head">
+      <div><span className="ops-eyebrow">ETC COMPLIANCE OPERATIONS</span><h2>Keep the 2026 reporting cycle moving.</h2><p>One place to manage the worksite, collect defensible commute evidence, resolve review items, and prepare a human-reviewed Rule 2202 package.</p></div>
+      <div className="etc-cycle-meta"><span>ACTIVE WORKSITE</span><strong>Pasadena Worksite A</strong><small>South Coast AQMD · 2026 cycle</small><b className="danger">Needs employer data</b></div>
+    </section>
+    <section className="etc-readiness-grid">
+      <article className="etc-readiness-card"><div className="etc-card-head"><div><span className="ops-eyebrow">REPORTING READINESS</span><h3>2 <small>/ 6 checks ready</small></h3></div><span className="etc-readiness-label">33%</span></div><div className="etc-progress"><i style={{ width: "33%" }} /></div><p>Confirm the worksite profile and connect source-backed employee data before calculations can begin.</p><button className="primary" onClick={() => onNavigate("rule2202")}>Open applicability <span aria-hidden="true">→</span></button></article>
+      <article className="etc-next-card"><span className="ops-eyebrow">NEXT ACTION</span><h3>Confirm worksite profile</h3><p>Employee count, business classification, ETC contact, and due date are not yet confirmed.</p><button className="ghost" onClick={() => onNavigate("rule2202")}>Open task <span aria-hidden="true">→</span></button></article>
+    </section>
+    <section className="etc-cycle-card"><div className="etc-section-head"><div><h3>Annual cycle</h3><p>Five operational steps from applicability to a reviewed draft package.</p></div><button className="text" onClick={() => onNavigate("rule2202")}>View cycle details →</button></div><div className="etc-cycle-rail" aria-label="Rule 2202 annual cycle"><div className="active"><b>1</b><span>Applicability<small>Blocked</small></span></div><i /><div><b>2</b><span>Population<small>Not started</small></span></div><i /><div><b>3</b><span>Survey / VMT<small>Not started</small></span></div><i /><div><b>4</b><span>Validate<small>Waiting</small></span></div><i /><div><b>5</b><span>Package<small>Waiting</small></span></div></div></section>
+    <section className="ops-grid two etc-lower-grid"><Panel title="Open work items"><div className="ops-task-list">{workItems.map(([title, detail, status, tone, target]) => <article key={title}><div><strong>{title}</strong><span>{detail}</span></div><div><b className={tone}>{status}</b><button className="text" onClick={() => onNavigate(target)}>Open</button></div></article>)}</div><button className="text" onClick={() => onNavigate("tasks")}>Open review queue →</button></Panel><Panel title="Evidence health"><div className="etc-evidence-grid"><div><strong>0</strong><span>Verified</span></div><div><strong>0</strong><span>Self-reported</span></div><div><strong>0</strong><span>Needs correction</span></div><div className="missing"><strong>4</strong><span>Missing</span></div></div><p className="ops-note">Evidence becomes package-eligible only after the required review decision is recorded.</p><button className="text" onClick={() => onNavigate("intake")}>Open evidence vault →</button></Panel></section>
+    <Panel title="Deadlines & owners"><div className="ops-deadline-list"><div><strong>Confirm worksite profile</strong><span>ETC</span><b className="danger">Not confirmed</b></div><div><strong>Launch commute survey</strong><span>ETC</span><b className="neutral">Not scheduled</b></div><div><strong>Review imported commute data</strong><span>Analyst</span><b className="neutral">Not scheduled</b></div><div><strong>Approve draft package</strong><span>Responsible official</span><b className="neutral">Waiting</b></div></div></Panel>
+    <details className="etc-public-context"><summary>Public Pasadena context <span>Context only — not employer compliance evidence.</span></summary><div className="ops-metrics">{cards.map((metric) => <article key={metric.key}><small>{metric.label}</small><strong>{metric.value}</strong><span>{metric.vintage}</span></article>)}</div></details>
   </>;
 }
 
